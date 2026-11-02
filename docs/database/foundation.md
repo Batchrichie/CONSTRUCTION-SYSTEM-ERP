@@ -26,6 +26,9 @@ The SQL migration filenames in this repository use the exact versions recorded b
 6. `20261102093949_least_privilege_data_api_grants.sql` — explicit least-privilege grants and default privilege tightening.
 7. `20261102094017_preserve_reversed_journals_in_ledger.sql` — preserves original posted entries alongside their reversing entries in ledger history.
 8. `20261102094403_single_company_installation.sql` — enforces one company workspace per database and records company creation in the audit log.
+9. `20261102095058_project_cost_management_foundation.sql` — projects, contracts, cost codes, cost centres, project budgets, project/overhead journal-line allocations, allocation RPC, posting control and attributed-cost views.
+10. `20261102095152_project_cost_foreign_key_indexes.sql` — supporting indexes for project/cost foreign keys.
+11. `20261102095624_project_cost_allocation_input_hardening.sql` — rejects null or non-array allocation payloads at the public RPC boundary.
 
 ## Organisation and access
 
@@ -42,12 +45,18 @@ The SQL migration filenames in this repository use the exact versions recorded b
 
 After a user signs in, call the `create_company_for_current_user` RPC with the legal name and display name. It creates the single company workspace, active owner membership, profile row and construction-oriented starter chart of accounts. A unique database index prevents a second company from being created in the same installation.
 
-## Accounting foundation
+## Project and cost foundation
 
-See [Accounting Database Foundation](../accounting/foundation.md) for the chart of accounts, fiscal-year/period lifecycle, journal posting, reversals, ledger views, security model and current limitations.
+Projects are company-scoped and support construction, architectural design, engineering, real-estate development, renovation and other project types. Contracts are linked to projects and capture contract value, currency, retention percentage, mobilisation amount, dates and status.
+
+Cost codes standardise project cost categories. Cost centres distinguish overhead, department, site and shared costs. Project budgets are recorded by project and cost code.
+
+Journal-line cost allocations support multiple allocations per line. A line can be split between multiple projects or between project and overhead cost centres. Expense debit lines must be fully attributed before journal posting. The allocation RPC only permits changes while the journal is a draft. Reversal lines inherit the original allocations with debit/credit sides inverted.
+
+The general ledger is not joined directly to allocation rows, avoiding duplicated ledger amounts. Separate `project_cost_ledger` and `overhead_cost_ledger` security-invoker views expose attributed costs.
 
 ## Verification status
 
-Supabase migration history confirms all eight migrations. Catalog queries confirmed RLS and policies on the accounting tables, explicit authenticated privileges, security-invoker views, and public RPC wrappers that are not executable by anon. The Supabase security advisor returned no findings. Performance advisor notices are limited to unused-index informational findings while the new database is still empty.
+Supabase migration history confirms ten migrations. The security advisor returned no findings after Phase 4. The performance advisor identified ten unindexed foreign keys; supporting indexes were added in migration 10. Remaining performance notices are unused-index informational findings while the database is empty.
 
 No company or sample accounting records have been inserted. Full authenticated end-to-end testing remains outstanding because no test Auth user has been provisioned in the project.

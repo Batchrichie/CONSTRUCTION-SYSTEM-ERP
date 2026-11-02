@@ -80,5 +80,7 @@ docs/                     Architecture, accounting, database and tax guidance
 - Dedicated development Supabase project is connected.
 - Organisation, identity and access foundation applied.
 - Accounting database foundation applied: fiscal years, periods, construction-oriented chart of accounts, journal entries and lines, controlled posting and reversals, general ledger, account balances and trial balance.
+- Phase 4 project/cost database foundation applied: projects, contracts, cost codes, cost centres, project budgets, split project/overhead cost allocations, posting attribution controls and separate attributed-cost views.
+- Supabase security advisor reports no findings; performance advisor reports only unused-index notices in the still-empty database.
 - No company, users, or sample accounting transactions have been inserted.
-- Frontend authentication, company setup, accounting screens and operational source modules remain pending.
+- Frontend authentication, company setup, project management, BOQ, accounting screens and operational source modules remain pending. Authenticated end-to-end testing is also pending because no test user has been provisioned.
