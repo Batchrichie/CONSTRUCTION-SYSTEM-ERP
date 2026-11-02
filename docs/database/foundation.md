@@ -8,58 +8,46 @@
 - PostgreSQL: 17
 - Intended use: dedicated development environment for this repository
 
-Do not commit Supabase secrets. The browser application must use only the project URL and publishable key. A service-role or secret key must remain server-side.
+Never commit Supabase secrets. Browser code may use the project URL and publishable key only. A service-role or secret key must remain server-side.
 
-## Applied migrations
+## Deployment model
 
-1. `20261102090000_organisation_identity_access.sql`
-   - Company workspace and user profile records
-   - System roles and permissions catalogue
-   - Company memberships
-   - Branches and departments
-   - Audit-log storage
-   - RLS policies and explicit Data API grants
-2. `20261102094500_foundation_security_and_indexes.sql`
-   - Moves privileged company onboarding implementation into the non-exposed `private` schema
-   - Exposes only a SECURITY INVOKER RPC wrapper
-   - Adds indexes for foreign-key lookup paths
+Each customer has a separate application deployment and Supabase database. One company workspace is permitted per database. `company_id` remains on records to support branches and future group reporting dimensions without shared cross-customer tenancy.
 
-## Access model
+## Applied migration history
+
+The SQL migration filenames in this repository use the exact versions recorded by Supabase.
+
+1. `20261102093318_organisation_identity_access.sql` — companies, profiles, roles, permissions, memberships, branches, departments, audit-log storage and RLS.
+2. `20261102093408_foundation_security_and_indexes.sql` — private company-onboarding implementation and supporting indexes.
+3. `20261102093806_accounting_schema_and_chart.sql` — fiscal years, accounting periods, chart of accounts, journal headers/lines, permission evaluation and starter chart seeding.
+4. `20261102093809_accounting_posting_engine.sql` — journal draft, posting and reversal RPCs, general-ledger and balance views.
+5. `20261102093920_accounting_period_controls_and_indexes.sql` — fiscal-year/period lifecycle controls, trial balance and additional indexes.
+6. `20261102093949_least_privilege_data_api_grants.sql` — explicit least-privilege grants and default privilege tightening.
+7. `20261102094017_preserve_reversed_journals_in_ledger.sql` — preserves original posted entries alongside their reversing entries in ledger history.
+8. `20261102094403_single_company_installation.sql` — enforces one company workspace per database and records company creation in the audit log.
+
+## Organisation and access
 
 - Supabase Auth is the identity provider.
-- Company access is represented by an active row in `company_memberships`.
-- The initial company creator receives the `owner` role.
-- `owner` and `admin` are the only roles currently allowed to administer company structure and memberships.
-- Every public application table has RLS enabled.
-- Data API grants are explicit; grants do not replace RLS.
-- Membership helper functions live in the non-exposed `private` schema.
-- The company-onboarding RPC validates `auth.uid()`; its privileged implementation is not exposed directly.
+- Active company membership controls access to company records.
+- The first user creating a company becomes its owner.
+- Owner and administrator roles have company-wide access; the accountant role has accounting read/manage/post permissions.
+- Permission evaluation is enforced in PostgreSQL.
+- All exposed public tables have RLS enabled.
+- Data API grants are explicit and separate from RLS policies.
+- Privileged implementations are kept in the non-exposed `private` schema; public RPC wrappers use SECURITY INVOKER.
 
-## Initial onboarding
+## Company onboarding
 
-After a user signs in, call:
+After a user signs in, call the `create_company_for_current_user` RPC with the legal name and display name. It creates the single company workspace, active owner membership, profile row and construction-oriented starter chart of accounts. A unique database index prevents a second company from being created in the same installation.
 
-```ts
-const { data: companyId, error } = await supabase.rpc(
-  'create_company_for_current_user',
-  {
-    p_legal_name: legalName,
-    p_display_name: displayName,
-  },
-);
-```
+## Accounting foundation
 
-The function creates the company, the caller's active owner membership and a profile row. It returns the new company UUID.
-
-## Deliberate omissions
-
-- No sample company, user or financial data has been inserted.
-- No real user has been invited or assigned a role.
-- Role-permission mappings are not yet seeded or enforced as fine-grained module permissions.
-- Audit-log writes are not yet wired to business-table triggers or posting functions.
-- Branch and department management UI is not yet implemented.
-- Accounting periods, chart of accounts, journals and journal-posting functions are the next database stage.
+See [Accounting Database Foundation](../accounting/foundation.md) for the chart of accounts, fiscal-year/period lifecycle, journal posting, reversals, ledger views, security model and current limitations.
 
 ## Verification status
 
-The two migrations are recorded in Supabase migration history. A catalog query confirmed all nine foundation tables have RLS enabled and policies present. Security and performance advisors were run; the initial onboarding security warning was addressed by moving the SECURITY DEFINER implementation into the private schema, and missing foreign-key indexes were added. Advisors should be rerun after the next migration.
+Supabase migration history confirms all eight migrations. Catalog queries confirmed RLS and policies on the accounting tables, explicit authenticated privileges, security-invoker views, and public RPC wrappers that are not executable by anon. The Supabase security advisor returned no findings. Performance advisor notices are limited to unused-index informational findings while the new database is still empty.
+
+No company or sample accounting records have been inserted. Full authenticated end-to-end testing remains outstanding because no test Auth user has been provisioned in the project.
