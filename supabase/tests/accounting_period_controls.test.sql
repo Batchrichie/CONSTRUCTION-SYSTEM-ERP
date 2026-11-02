@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(10);
+select extensions.plan(9);
 
 -- This test exercises the public accounting RPCs with a real authenticated
 -- identity claim, while keeping all fixture records inside this transaction.
@@ -46,12 +46,11 @@ select set_config(
   true
 );
 
-insert into _period_fixture(fiscal_year_id)
-select public.create_fiscal_year(
+update _period_fixture
+set fiscal_year_id = public.create_fiscal_year(
   company_id, 'TEST-' || left(company_id::text, 8),
   date '2026-01-01', date '2026-12-31'
-)
-from _period_fixture;
+);
 
 select extensions.is(
   (select status from public.fiscal_years
@@ -68,12 +67,11 @@ select extensions.is(
   'A draft fiscal year can be opened'
 );
 
-insert into _period_fixture(period_id)
-select public.create_accounting_period(
+update _period_fixture
+set period_id = public.create_accounting_period(
   company_id, fiscal_year_id, 1, 'January',
   date '2026-01-01', date '2026-01-31'
-)
-from _period_fixture;
+);
 
 select extensions.is(
   (select status from public.accounting_periods
