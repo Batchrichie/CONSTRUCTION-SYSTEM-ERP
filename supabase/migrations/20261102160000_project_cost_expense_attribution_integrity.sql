@@ -267,8 +267,7 @@ end;
 $$;
 
 -- Replace the existing trigger function in place; retain its existing trigger.
-drop view if exists public.project_cost_ledger;
-create view public.project_cost_ledger
+create or replace view public.project_cost_ledger
 with (security_invoker = true)
 as
 select
