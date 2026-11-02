@@ -1,9 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Modal from './Modal'
 
 describe('Modal', () => {
-  afterEach(() => { document.body.innerHTML = '' })
+  afterEach(() => cleanup())
 
   it('renders an accessible dialog and closes on Escape', () => {
     const onClose = vi.fn()
@@ -22,8 +22,10 @@ describe('Modal', () => {
 
   it('closes when the backdrop is clicked', () => {
     const onClose = vi.fn()
-    const { container } = render(<Modal title="Create record" onClose={onClose}><button>Save</button></Modal>)
-    fireEvent.mouseDown(container.querySelector('.modal-backdrop')!)
+    render(<Modal title="Create record" onClose={onClose}><button>Save</button></Modal>)
+    const backdrop = screen.getByRole('dialog').parentElement
+    expect(backdrop).not.toBeNull()
+    fireEvent.mouseDown(backdrop!)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
