@@ -16,6 +16,8 @@ type ModalProps = {
 export default function Modal({ title, description, eyebrow, children, footer, onClose, size = 'medium', closeDisabled = false }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     previousFocus.current = document.activeElement as HTMLElement | null
@@ -26,7 +28,7 @@ export default function Modal({ title, description, eyebrow, children, footer, o
       target?.focus()
     })
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !closeDisabled) onClose()
+      if (event.key === 'Escape' && !closeDisabled) onCloseRef.current()
       if (event.key !== 'Tab' || !panelRef.current) return
       const nodes = Array.from(panelRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
       if (!nodes.length) return
@@ -41,10 +43,10 @@ export default function Modal({ title, description, eyebrow, children, footer, o
       document.body.style.overflow = previousOverflow
       previousFocus.current?.focus()
     }
-  }, [closeDisabled, onClose])
+  }, [closeDisabled])
 
   return createPortal(
-    <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !closeDisabled) onClose() }}>
+    <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !closeDisabled) onCloseRef.current() }}>
       <div ref={panelRef} className={`modal-panel modal-${size}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby={description ? 'modal-description' : undefined}>
         <header className="modal-header">
           <div className="modal-heading-copy">
@@ -52,7 +54,7 @@ export default function Modal({ title, description, eyebrow, children, footer, o
             <h2 id="modal-title">{title}</h2>
             {description && <p id="modal-description">{description}</p>}
           </div>
-          <button type="button" className="modal-close" onClick={onClose} disabled={closeDisabled} aria-label="Close dialog"><X size={18}/></button>
+          <button type="button" className="modal-close" onClick={()=>onCloseRef.current()} disabled={closeDisabled} aria-label="Close dialog"><X size={18}/></button>
         </header>
         <div className="modal-body">{children}</div>
         {footer && <footer className="modal-footer">{footer}</footer>}
