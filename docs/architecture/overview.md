@@ -21,7 +21,7 @@ Start as a modular monolith. Each customer receives an independent application d
 
 ## Domain boundaries
 
-- **Projects:** project identity, contract, scope, milestones, variations and status.
+- **Projects:** project identity, contracts, scope, milestones, variations and status.
 - **Commercial:** estimates, BOQ, budgets, quotations, invoices and certificates.
 - **Accounting:** chart of accounts, fiscal years, periods, journals, general ledger, receivables, payables and financial reports.
 - **Procurement and inventory:** requisitions, purchase orders, receipts, stores, stock movements and valuation.
@@ -35,7 +35,9 @@ Start as a modular monolith. Each customer receives an independent application d
 
 Operational modules do not write directly to general-ledger balances. They submit validated source transactions to controlled accounting operations. Those operations create balanced journal entries and journal lines in one database transaction. Reports read posted ledger lines and reconcile to their subledgers.
 
-The accounting database foundation now provides fiscal-year and period controls, a construction-oriented chart of accounts, controlled journal draft/post/reversal operations, a general-ledger view, account balances and trial balance. Journal lines are initially in the company's functional currency; multi-currency remeasurement is future work.
+The accounting database foundation provides fiscal-year and period controls, a construction-oriented chart of accounts, controlled journal draft/post/reversal operations, a general-ledger view, account balances and trial balance. Journal lines are initially in the company's functional currency; multi-currency remeasurement is future work.
+
+Phase 4 adds project and contract records, standard cost codes, cost centres, project budgets and project/overhead attribution of journal-line amounts. Project and overhead allocations are separate from the general ledger and are exposed through dedicated security-invoker views. Expense debit lines cannot post until their amounts are fully attributed.
 
 ## Security baseline
 
@@ -49,4 +51,4 @@ The accounting database foundation now provides fiscal-year and period controls,
 
 ## Build sequence
 
-The frontend shell and CI workflow are established. The dedicated Supabase development project is connected and verified. Organisation/identity and accounting database foundations are applied through versioned migrations. Frontend authentication, company setup and accounting workflows are the next application-layer tasks.
+The frontend shell and CI workflow are established. The dedicated Supabase development project is connected and verified. Organisation/identity, accounting, and project/cost database foundations are applied through versioned migrations. Frontend authentication, company setup, project management and accounting workflows are the next application-layer tasks.
