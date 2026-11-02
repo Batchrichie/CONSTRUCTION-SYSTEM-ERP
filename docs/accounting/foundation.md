@@ -26,17 +26,27 @@ Posting is atomic. It revalidates the journal, assigns a sequential journal numb
 
 Reversals create a new opposite journal in an open period and link it to the original. The original is marked reversed but remains visible in the general ledger alongside the reversing journal. No posted entry is deleted or silently removed from history.
 
+## Project and overhead cost attribution
+
+Project costs and non-project overheads use the same general ledger. The Phase 4 schema adds company-scoped projects, contracts, cost codes, cost centres and project budgets.
+
+Each journal line can have multiple cost allocations. A project allocation must reference a valid company project; an overhead allocation must reference an active overhead, department or shared cost centre. Cost codes can be attached to either type. This supports splitting one source cost across projects or between projects and general overhead without duplicating the general-ledger line.
+
+The `replace_journal_line_cost_allocations` RPC is the controlled write path. It checks company permission, draft journal status, company ownership of referenced dimensions and that allocations do not exceed the journal line amount. Expense debit lines must be fully allocated before posting. The reversal trigger copies allocations to reversing lines and flips debit/credit sides.
+
+Use `project_cost_ledger` for project-attributed costs and `overhead_cost_ledger` for non-project costs. These are separate security-invoker views; allocation rows are not joined into the general ledger itself, so trial-balance and account totals are not multiplied.
+
 ## Security
 
-All accounting tables in the exposed public schema have RLS enabled. Data API grants are explicit and least-privilege. Company access is checked against active membership and role permissions. Public RPC wrappers use SECURITY INVOKER; privileged implementations are held in the non-exposed private schema, use an empty search path, and validate the authenticated user and permissions. General-ledger, account-balance and trial-balance views use security_invoker=true.
+All accounting and Phase 4 construction tables in the exposed public schema have RLS enabled. Data API grants are explicit and least-privilege. Company access is checked against active membership and role permissions. Public RPC wrappers use SECURITY INVOKER; privileged implementations are held in the non-exposed private schema, use an empty search path, and validate the authenticated user and permissions. Ledger and attributed-cost views use security_invoker=true.
 
 ## Not yet implemented
 
-- Frontend company setup, fiscal-year setup, chart-of-accounts screens and journal UI.
-- Full authenticated end-to-end posting/reversal test; no test Auth user was provisioned in the live project.
+- Frontend company setup, fiscal-year setup, chart-of-accounts screens, journal entry screens and project/cost workflows.
+- Full authenticated end-to-end posting/reversal and allocation tests; no test Auth user was provisioned in the live project.
 - Foreign currency journals, remeasurement and realised/unrealised FX accounting.
-- Project, cost-code and cost-centre dimensions; these will be connected with the project/cost-management schema.
-- Sales, procurement, inventory, payroll and tax source-module integrations.
+- Customer/supplier master records and links from contracts to customer records.
+- BOQ, estimates, project progress certificates, variations, procurement, inventory, payroll and tax source-module integrations.
 - Advanced year-end closing, retained-earnings roll-forward and reconciliation workflows.
 - Construction contract revenue-recognition calculations, which remain separate from invoicing and cash collection.
 
