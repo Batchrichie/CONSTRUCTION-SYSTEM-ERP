@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(8);
+select extensions.plan(9);
 
 -- Isolated fixture: this test runs on a freshly migrated local Supabase database.
 create temporary table _accounting_fixture (
@@ -36,6 +36,14 @@ from _accounting_fixture;
 
 select private.seed_default_chart_of_accounts(company_id)
 from _accounting_fixture;
+
+select extensions.is(
+  (select count(*)::integer from public.chart_of_accounts
+   where company_id=(select company_id from _accounting_fixture)
+     and account_code='1110'),
+  1,
+  'Default chart seeding creates leaf accounts beneath newly created grouping accounts'
+);
 
 insert into public.fiscal_years (
   id, company_id, year_code, start_date, end_date, status, created_by
