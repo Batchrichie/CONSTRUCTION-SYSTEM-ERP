@@ -77,12 +77,12 @@ docs/                     Architecture, accounting, database and tax guidance
 
 ## Current status
 
-- Repository and frontend shell established; automated build, test and lint workflows are configured but have not yet been independently verified in this environment.
+- Repository and frontend shell established; the Phase 1–4 CI checks have passed. Phase 5 CI verification is pending.
 - Dedicated development Supabase project is connected.
 - Organisation, identity and access foundation applied.
 - Accounting database foundation applied: fiscal years, periods, construction-oriented chart of accounts, journal entries and lines, controlled posting and reversals, general ledger, account balances and trial balance.
 - Phase 4 project/cost database foundation applied: projects, contracts, cost codes, cost centres, project budgets, split project/overhead cost allocations, posting attribution controls and separate attributed-cost views.
 - Phase 5 commercial/estimating database foundation applied: shared customer/supplier register, party contacts, customer links on projects/contracts, revision-aware estimates, BOQ sections and line items, calculated estimate totals, and controlled estimate submission/approval history.
-- Supabase security advisor reports no findings; performance advisor reports only unused-index notices in the still-empty database.
-- No company, users, or sample accounting transactions have been inserted.
+- Supabase security advisor reports no findings after Phase 5. Performance advisor reports informational unused-index notices in the empty database; all Phase 5 foreign keys have supporting indexes.
+- No company workspace, authenticated test users, or sample accounting transactions have been inserted.
 - Frontend authentication, company setup, customer/supplier screens, estimate/BOQ workflows, project management, accounting screens and operational source modules remain pending. Authenticated end-to-end testing is also pending because no test user has been provisioned.

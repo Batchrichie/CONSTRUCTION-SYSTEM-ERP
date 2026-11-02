@@ -29,6 +29,9 @@ The SQL migration filenames in this repository use the exact versions recorded b
 9. `20261102095058_project_cost_management_foundation.sql` — projects, contracts, cost codes, cost centres, project budgets, project/overhead journal-line allocations, allocation RPC, posting control and attributed-cost views.
 10. `20261102095152_project_cost_foreign_key_indexes.sql` — supporting indexes for project/cost foreign keys.
 11. `20261102095624_project_cost_allocation_input_hardening.sql` — rejects null or non-array allocation payloads at the public RPC boundary.
+12. `20261102104638_commercial_estimating_foundation.sql` — business parties, contacts, customer links, estimates, BOQ sections/items, status workflow, RLS, grants and estimate totals.
+13. `20261102104653_commercial_estimating_foreign_key_indexes.sql` — supporting indexes for Phase 5 foreign keys.
+14. `20261102104846_commercial_active_customer_validation.sql` — requires active customer parties on new project, contract and estimate links; protects customer designation while linked.
 
 ## Organisation and access
 
@@ -57,7 +60,7 @@ The general ledger is not joined directly to allocation rows, avoiding duplicate
 
 ## Commercial and estimating foundation
 
-The `business_parties` register supports customer-only, supplier-only, and combined customer/supplier records. Party contacts are maintained separately. Projects and project contracts can link to a customer record while retaining the existing free-text client field for compatibility.
+The `business_parties` register supports customer-only, supplier-only, and combined customer/supplier records. Party contacts are maintained separately. Projects and project contracts can link to a customer record while retaining the existing free-text client field for compatibility. New customer links require an active party marked as a customer; a party linked to project, contract or estimate records cannot have its customer designation removed.
 
 Estimates are revision-aware commercial documents linked to a customer and optionally to a project and contract. BOQs contain ordered sections and measurable items with positive quantities, non-negative rates, fixed-precision generated line totals, optional cost-code mapping, and an estimate totals view. Draft BOQs remain editable; submitted estimates are locked. Submission requires at least one priced BOQ line and a discount no greater than the BOQ subtotal. Approval and rejection are permission-controlled and status changes are retained in an append-only estimate status history. Rejection requires a reason.
 
@@ -65,6 +68,12 @@ Estimate tax and discount amounts are estimate-level inputs only. They are not a
 
 ## Verification status
 
-Supabase migration history confirms twelve migrations. The security advisor returned no findings after Phase 5. The six new Phase 5 tables have RLS enabled, no `anon` table grants were found, and the `estimate_totals` view uses `security_invoker=true`. Six unindexed foreign keys identified in the first Phase 5 performance pass were covered by migration 12; the remaining unused-index notices are informational while the database is empty. The six new Phase 5 tables have RLS enabled, no `anon` table grants were found, and the `estimate_totals` view uses `security_invoker=true`. Phase 5 foreign-key indexes were added after the performance advisor identified six unindexed foreign keys. The performance advisor identified ten unindexed foreign keys; supporting indexes were added in migration 10. Remaining performance notices are unused-index informational findings while the database is empty.
+- Supabase migration history confirms fourteen migrations.
+- The six new Phase 5 tables have RLS enabled and nineteen RLS policies are present.
+- No anonymous table grants were found for Phase 5 tables.
+- The `estimate_totals` view exists and uses `security_invoker=true`.
+- Direct authenticated UPDATE privilege on the estimate status column is not granted; status changes use the controlled RPC.
+- The security advisor returned no findings after Phase 5.
+- The first Phase 5 performance pass identified six unindexed foreign keys; migration 13 adds the required indexes. Remaining notices are unused-index information while the database is empty.
 
 No company or sample accounting records have been inserted. Full authenticated end-to-end testing remains outstanding because no test Auth user has been provisioned in the project.
