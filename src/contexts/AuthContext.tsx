@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [companyError, setCompanyError] = useState<string | null>(null)
   const authEventVersion = useRef(0)
   const companyRequestVersion = useRef(0)
+  const activeUserId = useRef<string | null>(null)
 
   useEffect(() => {
     if (!supabase) {
@@ -48,7 +49,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       authEventVersion.current += 1
+      const nextUserId = nextSession?.user.id ?? null
+      const userChanged = nextUserId !== activeUserId.current
+      activeUserId.current = nextUserId
       setSession(nextSession)
+
+      if (userChanged && nextSession) {
+        setCompany(null)
+        setRoleCode(null)
+        setCompanyError(null)
+        setCompanyLoading(true)
+      }
 
       if (!nextSession) {
         companyRequestVersion.current += 1
@@ -66,13 +77,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data, error }) => {
         if (!active || authEventVersion.current !== initialAuthEventVersion) return
         if (error) {
+          activeUserId.current = null
           setSession(null)
           return
         }
+        activeUserId.current = data.session?.user.id ?? null
         setSession(data.session)
+        setCompanyLoading(Boolean(data.session))
       })
       .catch(() => {
         if (active && authEventVersion.current === initialAuthEventVersion) {
+          activeUserId.current = null
           setSession(null)
         }
       })
