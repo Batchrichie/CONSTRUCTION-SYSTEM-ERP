@@ -4,7 +4,7 @@ import {
   Package, Settings, Users, Wallet,
 } from 'lucide-react'
 
-export type NavigationSection = 'WORKSPACE' | 'FINANCE' | 'OPERATIONS' | 'ADMINISTRATION'
+export type NavigationSection = 'WORKSPACE' | 'COMMERCIAL' | 'FINANCE' | 'OPERATIONS' | 'ADMINISTRATION'
 
 export interface ModuleDefinition {
   path: string
