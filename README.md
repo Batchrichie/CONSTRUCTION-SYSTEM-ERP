@@ -100,4 +100,4 @@ docs/
 
 ## Current status
 
-The repository is being bootstrapped from an empty state. No production database is connected yet. Supabase integration will be added when the database foundation is ready.
+The repository is being bootstrapped in phases. The dedicated development Supabase project is connected. The organisation/identity/access foundation is applied and versioned under `supabase/migrations`. The accounting schema and operational modules are still pending.
