@@ -90,7 +90,7 @@ select extensions.is(
   'Accumulated depreciation is treated as a credit-normal account'
 );
 
-select is(
+select extensions.is(
   (select balance from public.account_balances
    where company_id=(select company_id from _accounting_fixture)
      and account_code='1590'),
@@ -98,7 +98,7 @@ select is(
   'A debit to accumulated depreciation reduces its credit-normal balance'
 );
 
-select is(
+select extensions.is(
   (select closing_balance from public.trial_balance
    where company_id=(select company_id from _accounting_fixture)
      and account_code='1590'),
@@ -138,21 +138,21 @@ update public.journal_entries
 set status='reversed'
 where id=(select journal_id from _accounting_fixture);
 
-select is(
+select extensions.is(
   (select count(*)::integer from public.general_ledger
    where company_id=(select company_id from _accounting_fixture)),
   4,
   'Original and reversing journal lines both remain in the general ledger'
 );
 
-select is(
+select extensions.is(
   (select reversal_of_journal_id from public.journal_entries
    where id=(select reversal_id from _accounting_fixture)),
   (select journal_id from _accounting_fixture),
   'Reversal retains its link to the original journal'
 );
 
-select is(
+select extensions.is(
   (select balance from public.account_balances
    where company_id=(select company_id from _accounting_fixture)
      and account_code='1590'),
@@ -160,7 +160,7 @@ select is(
   'Original and reversing entries net the contra-account balance to zero'
 );
 
-select is(
+select extensions.is(
   (select closing_balance from public.trial_balance
    where company_id=(select company_id from _accounting_fixture)
      and account_code='1590'),
