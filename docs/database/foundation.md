@@ -55,8 +55,16 @@ Journal-line cost allocations support multiple allocations per line. A line can 
 
 The general ledger is not joined directly to allocation rows, avoiding duplicated ledger amounts. Separate `project_cost_ledger` and `overhead_cost_ledger` security-invoker views expose attributed costs.
 
+## Commercial and estimating foundation
+
+The `business_parties` register supports customer-only, supplier-only, and combined customer/supplier records. Party contacts are maintained separately. Projects and project contracts can link to a customer record while retaining the existing free-text client field for compatibility.
+
+Estimates are revision-aware commercial documents linked to a customer and optionally to a project and contract. BOQs contain ordered sections and measurable items with positive quantities, non-negative rates, fixed-precision generated line totals, optional cost-code mapping, and an estimate totals view. Draft BOQs remain editable; submitted estimates are locked. Submission requires at least one priced BOQ line and a discount no greater than the BOQ subtotal. Approval and rejection are permission-controlled and status changes are retained in an append-only estimate status history. Rejection requires a reason.
+
+Estimate tax and discount amounts are estimate-level inputs only. They are not a Ghana VAT calculation, tax filing value, sales invoice, receivable, or general-ledger posting. Approval does not automatically create a contract or change the project budget. Those integrations belong to subsequent commercial and accounting phases.
+
 ## Verification status
 
-Supabase migration history confirms ten migrations. The security advisor returned no findings after Phase 4. The performance advisor identified ten unindexed foreign keys; supporting indexes were added in migration 10. Remaining performance notices are unused-index informational findings while the database is empty.
+Supabase migration history confirms twelve migrations. The security advisor returned no findings after Phase 5. The six new Phase 5 tables have RLS enabled, no `anon` table grants were found, and the `estimate_totals` view uses `security_invoker=true`. Phase 5 foreign-key indexes were added after the performance advisor identified six unindexed foreign keys. The performance advisor identified ten unindexed foreign keys; supporting indexes were added in migration 10. Remaining performance notices are unused-index informational findings while the database is empty.
 
 No company or sample accounting records have been inserted. Full authenticated end-to-end testing remains outstanding because no test Auth user has been provisioned in the project.

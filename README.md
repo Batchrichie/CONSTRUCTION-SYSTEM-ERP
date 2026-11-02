@@ -66,13 +66,14 @@ docs/                     Architecture, accounting, database and tax guidance
 1. Repository and frontend foundation
 2. Database foundation, identity and permissions
 3. Chart of accounts, fiscal periods, journals and general ledger
-4. Projects, contracts, BOQ and budgets
-5. Sales, purchases, payments and reconciliation
-6. Procurement, inventory and site operations
-7. Construction progress, retention, advances and revenue recognition
-8. Ghana tax and payroll
-9. Architecture/engineering and real-estate workflows
-10. Reporting, hardening and deployment
+4. Projects, contracts, cost codes and budgets
+5. Customers, suppliers, estimates and BOQ
+6. Sales, purchases, payments and reconciliation
+7. Procurement, inventory and site operations
+8. Construction progress, retention, advances and revenue recognition
+9. Ghana tax and payroll
+10. Architecture/engineering and real-estate workflows
+11. Reporting, hardening and deployment
 
 ## Current status
 
@@ -81,6 +82,7 @@ docs/                     Architecture, accounting, database and tax guidance
 - Organisation, identity and access foundation applied.
 - Accounting database foundation applied: fiscal years, periods, construction-oriented chart of accounts, journal entries and lines, controlled posting and reversals, general ledger, account balances and trial balance.
 - Phase 4 project/cost database foundation applied: projects, contracts, cost codes, cost centres, project budgets, split project/overhead cost allocations, posting attribution controls and separate attributed-cost views.
+- Phase 5 commercial/estimating database foundation applied: shared customer/supplier register, party contacts, customer links on projects/contracts, revision-aware estimates, BOQ sections and line items, calculated estimate totals, and controlled estimate submission/approval history.
 - Supabase security advisor reports no findings; performance advisor reports only unused-index notices in the still-empty database.
 - No company, users, or sample accounting transactions have been inserted.
-- Frontend authentication, company setup, project management, BOQ, accounting screens and operational source modules remain pending. Authenticated end-to-end testing is also pending because no test user has been provisioned.
+- Frontend authentication, company setup, customer/supplier screens, estimate/BOQ workflows, project management, accounting screens and operational source modules remain pending. Authenticated end-to-end testing is also pending because no test user has been provisioned.
