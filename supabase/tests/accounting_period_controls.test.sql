@@ -69,7 +69,7 @@ select extensions.is(
 
 update _period_fixture
 set period_id = public.create_accounting_period(
-  company_id, fiscal_year_id, 1, 'January',
+  company_id, fiscal_year_id, 1::smallint, 'January',
   date '2026-01-01', date '2026-01-31'
 );
 
@@ -90,7 +90,7 @@ select extensions.is(
 
 select extensions.throws_ok(
   format(
-    'select public.create_accounting_period(%L::uuid,%L::uuid,2,%L,%L::date,%L::date)',
+    'select public.create_accounting_period(%L::uuid,%L::uuid,2::smallint,%L,%L::date,%L::date)',
     (select company_id from _period_fixture),
     (select fiscal_year_id from _period_fixture),
     'Overlapping period',
@@ -104,7 +104,7 @@ select extensions.throws_ok(
 
 select extensions.throws_ok(
   format(
-    'select public.create_accounting_period(%L::uuid,%L::uuid,2,%L,%L::date,%L::date)',
+    'select public.create_accounting_period(%L::uuid,%L::uuid,2::smallint,%L,%L::date,%L::date)',
     (select company_id from _period_fixture),
     (select fiscal_year_id from _period_fixture),
     'Out of year period',
