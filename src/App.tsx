@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './layouts/AppLayout'
 import DashboardPage from './pages/DashboardPage'
 import ModulePage from './pages/ModulePage'
@@ -18,7 +18,8 @@ export default function App() {
         <Route path="people" element={<ModulePage />} />
         <Route path="reports" element={<ModulePage />} />
         <Route path="settings" element={<ModulePage />} />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="not-found" element={<NotFoundPage />} />
+        <Route path="*" element={<Navigate to="/not-found" replace />} />
       </Route>
     </Routes>
   )

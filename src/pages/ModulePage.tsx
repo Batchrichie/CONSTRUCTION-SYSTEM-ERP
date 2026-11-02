@@ -1,12 +1,11 @@
-import { useLocation } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { ArrowRight, Construction, ListChecks } from 'lucide-react'
 import { modules } from '../modules/moduleRegistry'
-import NotFoundPage from './NotFoundPage'
 
 export default function ModulePage() {
   const { pathname } = useLocation()
   const definition = modules.find((item) => item.path === pathname)
-  if (!definition) return <NotFoundPage />
+  if (!definition) return <Navigate to="/not-found" replace />
   const Icon = definition.icon
 
   return (
