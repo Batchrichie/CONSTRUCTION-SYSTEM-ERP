@@ -39,6 +39,8 @@ The accounting database foundation provides fiscal-year and period controls, a c
 
 Phase 4 adds project and contract records, standard cost codes, cost centres, project budgets and project/overhead attribution of journal-line amounts. Project and overhead allocations are separate from the general ledger and are exposed through dedicated security-invoker views. Expense debit lines cannot post until their amounts are fully attributed.
 
+Phase 5 adds a shared business-party register for customers and suppliers, linked contacts, customer links on projects and contracts, revision-aware estimates, BOQ sections and line items, and a security-invoker estimate totals view. Estimate status changes are controlled by a permission-checked RPC and recorded in status history. Estimates remain commercial documents: they do not post journals, create invoices, or automatically change approved project budgets.
+
 ## Security baseline
 
 - Supabase Auth identifies users.
