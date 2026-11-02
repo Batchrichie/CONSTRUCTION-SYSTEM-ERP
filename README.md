@@ -4,100 +4,85 @@ A modular construction, architecture/engineering, and real-estate ERP designed i
 
 ## Product direction
 
-Build one maintainable product for:
-- Construction contractors
-- Architectural and engineering practices
-- Real-estate developers
-
-Each customer installation has its own application deployment and database. The schema retains `company_id` on financial and operational records to support future branches and group structures without adopting shared multi-tenant hosting now.
+Build one maintainable product for construction contractors, architectural and engineering practices, and real-estate developers. Each customer installation has its own application deployment and database. Operational and financial records retain `company_id` for future branch and group readiness.
 
 ## Confirmed foundations
 
-- **Accounting:** accrual basis; GHS is the initial default currency.
-- **Accounting standards:** IFRS-aligned design, with statutory and tax rules configurable by effective date.
-- **Architecture:** modular monolith; shared project and accounting foundations.
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS.
-- **Backend:** Supabase PostgreSQL, Auth, Row Level Security, database functions, Edge Functions and Storage.
-- **Source control:** GitHub; database changes are versioned as migrations.
-- **Deployment approach:** free-tier-first for development, with production limits and costs reviewed before launch.
+- Accrual accounting; GHS is the initial default functional currency.
+- IFRS-aligned design, with statutory and tax rules configurable by effective date.
+- Modular monolith architecture.
+- React, TypeScript, Vite frontend.
+- Supabase PostgreSQL, Auth, RLS, database functions, Edge Functions and Storage.
+- GitHub source control; database schema changes are versioned as migrations.
+- Free-tier-first development, with production limits and costs reviewed before launch.
 
 ## Core product areas
 
-1. Organisation, branches and departments
-2. Users, roles and permissions
-3. Customers, suppliers and CRM
-4. Projects, contracts and variations
-5. Estimation, BOQ and project budgets
-6. Accounting, journals, general ledger and financial statements
-7. Quotations, sales invoices, receipts and credit notes
-8. Purchases, supplier bills and payables
-9. Procurement and approvals
-10. Inventory, warehouses and project material issues
-11. Site operations, labour and equipment
-12. Payroll and HR
-13. Ghana tax configuration and statutory reporting
-14. Architectural/engineering project stages, deliverables and revisions
-15. Real-estate properties, units, sales and leases
-16. Management reporting and analytics
+1. Organisation, branches, departments, users and permissions
+2. Customers, suppliers and CRM
+3. Projects, contracts, milestones and variations
+4. Estimation, BOQ and project budgets
+5. Accounting, journals, general ledger and financial statements
+6. Quotations, sales invoices, receipts and credit notes
+7. Purchases, supplier bills and payables
+8. Procurement and approvals
+9. Inventory, warehouses and project material issues
+10. Site operations, labour and equipment
+11. Payroll and HR
+12. Ghana tax configuration and statutory reporting
+13. Architectural/engineering stages, deliverables and revisions
+14. Real-estate properties, units, sales and leases
+15. Management reporting and analytics
 
 ## Non-negotiable accounting controls
 
-- Posted journals must balance and post atomically.
+- Posted journals balance and post atomically.
 - General-ledger balances are derived from posted journal lines.
-- Posted entries are immutable; corrections use linked reversals or credit notes.
+- Posted entries are not deleted; corrections use linked reversals or credit notes.
 - Posting is idempotent and protected against duplicate submissions.
-- Closed accounting periods reject unauthorised postings.
+- Closed periods reject postings; period transitions are controlled and audited.
 - Subledgers reconcile to the general ledger.
 - Revenue recognition is separate from invoicing and cash collection.
-- Construction revenue recognition follows the applicable contract/accounting criteria; over-time recognition is not assumed for every contract.
+- Construction over-time revenue recognition is not assumed for every contract.
 - Monetary values use fixed-precision decimal types, never floating-point types.
-- Every privileged posting operation is validated server-side and leaves an audit trail.
-
-## Development principles
-
-- Inspect before extending; avoid duplicate modules and premature abstractions.
-- Keep business rules out of presentation components.
-- Use database migrations as the source of truth for schema changes.
-- Enforce permissions in the database, not only in the UI.
-- Never expose Supabase service-role credentials in browser code.
-- Add automated tests for accounting invariants and critical workflows.
-- Do not hardcode Ghana tax rates. Tax rules must be effective-dated, configurable and verified against current official guidance before release.
+- Privileged posting is validated server-side and leaves an audit trail.
 
 ## Repository layout (target)
 
 ```text
-apps/
-  web/                 React application
-packages/
-  shared/              Shared types and utilities
-  accounting-core/     Accounting domain rules
-  construction-core/   Construction domain rules
-  tax-engine/          Effective-dated tax rules
-supabase/
-  migrations/          Versioned database migrations
-  functions/           Edge Functions
-  seed/                Development seed data
-  tests/               Database tests
-docs/
-  architecture/
-  accounting/
-  database/
-  tax/
+apps/web/                 React application
+packages/shared/          Shared types and utilities
+packages/accounting-core/ Accounting domain rules
+packages/construction-core/ Construction domain rules
+packages/tax-engine/      Effective-dated tax rules
+supabase/migrations/      Versioned database migrations
+supabase/functions/       Edge Functions
+supabase/tests/           Database tests
+docs/                     Architecture, accounting, database and tax guidance
 ```
 
 ## Delivery sequence
 
 1. Repository and frontend foundation
 2. Database foundation, identity and permissions
-3. Chart of accounts, periods, journals and general ledger
-4. Projects, contracts, BOQ and budgets
-5. Sales, purchases, payments and reconciliation
-6. Procurement, inventory and site operations
-7. Construction progress, retention, advances and revenue recognition
-8. Ghana tax and payroll
-9. Architecture/engineering and real-estate workflows
-10. Reporting, hardening and deployment
+3. Chart of accounts, fiscal periods, journals and general ledger
+4. Projects, contracts, cost codes and budgets
+5. Customers, suppliers, estimates and BOQ
+6. Sales, purchases, payments and reconciliation
+7. Procurement, inventory and site operations
+8. Construction progress, retention, advances and revenue recognition
+9. Ghana tax and payroll
+10. Architecture/engineering and real-estate workflows
+11. Reporting, hardening and deployment
 
 ## Current status
 
-The repository is being bootstrapped from an empty state. No production database is connected yet. Supabase integration will be added when the database foundation is ready.
+- Repository and frontend shell established; the Phase 1–4 CI checks have passed. Phase 5 CI verification is pending.
+- Dedicated development Supabase project is connected.
+- Organisation, identity and access foundation applied.
+- Accounting database foundation applied: fiscal years, periods, construction-oriented chart of accounts, journal entries and lines, controlled posting and reversals, general ledger, account balances and trial balance.
+- Phase 4 project/cost database foundation applied: projects, contracts, cost codes, cost centres, project budgets, split project/overhead cost allocations, posting attribution controls and separate attributed-cost views.
+- Phase 5 commercial/estimating database foundation applied: shared customer/supplier register, party contacts, customer links on projects/contracts, revision-aware estimates, BOQ sections and line items, calculated estimate totals, and controlled estimate submission/approval history.
+- Supabase security advisor reports no findings after Phase 5. Performance advisor reports informational unused-index notices in the empty database; all Phase 5 foreign keys have supporting indexes.
+- No company workspace, authenticated test users, or sample accounting transactions have been inserted.
+- Frontend authentication, company setup, customer/supplier screens, estimate/BOQ workflows, project management, accounting screens and operational source modules remain pending. Authenticated end-to-end testing is also pending because no test user has been provisioned.
