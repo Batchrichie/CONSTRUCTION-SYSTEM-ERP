@@ -4,6 +4,8 @@
 
 The accounting database foundation includes fiscal years, accounting periods, a company chart of accounts, journal headers and lines, controlled posting and reversal functions, a general-ledger view, account balances and a trial-balance view.
 
+The deployment model allows one company workspace per database. Branches are represented separately, while financial and operational records retain company scope.
+
 All monetary amounts use PostgreSQL NUMERIC(20,4). The initial functional currency is the company base currency, defaulting to GHS. Foreign-currency remeasurement and FX gains/losses are not yet implemented.
 
 ## Starter chart of accounts
