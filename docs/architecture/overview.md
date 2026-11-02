@@ -46,4 +46,4 @@ Operational modules do not write directly to general-ledger balances. They submi
 
 ## Build sequence
 
-The first release establishes the frontend shell and automated checks. Database schema work begins only after the Supabase project is connected and its environment is verified. All schema changes will be versioned under `supabase/migrations`.
+The frontend shell and automated checks are established. The dedicated Supabase development project is connected and verified. Organisation, identity and access tables are now versioned and applied through `supabase/migrations`. All subsequent schema changes must be committed to the repository before being applied to Supabase.
