@@ -28,6 +28,7 @@ The SQL migration filenames in this repository use the exact versions recorded b
 8. `20261102094403_single_company_installation.sql` — enforces one company workspace per database and records company creation in the audit log.
 9. `20261102095058_project_cost_management_foundation.sql` — projects, contracts, cost codes, cost centres, project budgets, project/overhead journal-line allocations, allocation RPC, posting control and attributed-cost views.
 10. `20261102095152_project_cost_foreign_key_indexes.sql` — supporting indexes for project/cost foreign keys.
+11. `20261102095624_project_cost_allocation_input_hardening.sql` — rejects null or non-array allocation payloads at the public RPC boundary.
 
 ## Organisation and access
 
