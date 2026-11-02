@@ -47,20 +47,6 @@ Build one maintainable product for construction contractors, architectural and e
 - Monetary values use fixed-precision decimal types, never floating-point types.
 - Privileged posting is validated server-side and leaves an audit trail.
 
-## Repository layout (target)
-
-```text
-apps/web/                 React application
-packages/shared/          Shared types and utilities
-packages/accounting-core/ Accounting domain rules
-packages/construction-core/ Construction domain rules
-packages/tax-engine/      Effective-dated tax rules
-supabase/migrations/      Versioned database migrations
-supabase/functions/       Edge Functions
-supabase/tests/           Database tests
-docs/                     Architecture, accounting, database and tax guidance
-```
-
 ## Delivery sequence
 
 1. Repository and frontend foundation
@@ -75,14 +61,15 @@ docs/                     Architecture, accounting, database and tax guidance
 10. Architecture/engineering and real-estate workflows
 11. Reporting, hardening and deployment
 
-## Current status
+## Current implementation status
 
-- Repository and frontend shell established; the Phase 1–4 CI checks have passed. Phase 5 CI verification is pending.
-- Dedicated development Supabase project is connected.
-- Organisation, identity and access foundation applied.
-- Accounting database foundation applied: fiscal years, periods, construction-oriented chart of accounts, journal entries and lines, controlled posting and reversals, general ledger, account balances and trial balance.
-- Phase 4 project/cost database foundation applied: projects, contracts, cost codes, cost centres, project budgets, split project/overhead cost allocations, posting attribution controls and separate attributed-cost views.
-- Phase 5 commercial/estimating database foundation applied: shared customer/supplier register, party contacts, customer links on projects/contracts, revision-aware estimates, BOQ sections and line items, calculated estimate totals, and controlled estimate submission/approval history.
-- Supabase security advisor reports no findings after Phase 5. Performance advisor reports informational unused-index notices in the empty database; all Phase 5 foreign keys have supporting indexes.
-- No company workspace, authenticated test users, or sample accounting transactions have been inserted.
-- Frontend authentication, company setup, customer/supplier screens, estimate/BOQ workflows, project management, accounting screens and operational source modules remain pending. Authenticated end-to-end testing is also pending because no test user has been provisioned.
+- Phases 1–6 and their integration are merged into `main`.
+- The development Supabase project is connected and all 16 versioned migrations are recorded as applied.
+- Organisation, identity, role/permission foundations, accounting, project costing, customers/suppliers, estimates and BOQ are present in the database.
+- Authentication, company onboarding, customer/supplier management and estimate/BOQ workflows are implemented in the frontend.
+- CI runs TypeScript/production build, Vitest tests and ESLint.
+- Phase 7 is the verification and hardening phase. Authenticated end-to-end coverage, accounting/project-cost control tests, operational sample workflows and production readiness remain outstanding.
+- The development database currently contains one company membership and no fiscal years, journals, projects, parties or estimates. Do not treat the empty operational tables as tested workflows.
+- Supabase Auth leaked-password protection is currently reported disabled by the security advisor and must be enabled in the project Auth settings before production use.
+
+See `docs/phase-7/verification-plan.md` for the staged acceptance plan.
