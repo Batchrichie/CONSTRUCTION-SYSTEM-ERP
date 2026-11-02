@@ -306,7 +306,7 @@ left join public.cost_codes cc
   on cc.company_id = a.company_id
  and cc.id = a.cost_code_id
 where a.attribution_scope = 'project'
-  and j.status = 'posted'
+  and j.status in ('posted', 'reversed')
   and coa.account_type = 'expense';
 
 grant select on public.project_cost_ledger to authenticated;
