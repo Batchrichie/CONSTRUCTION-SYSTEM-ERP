@@ -17,7 +17,7 @@ describe('ERP application routes', () => {
   it('renders the overview dashboard at the root route', () => {
     renderApp()
     expect(screen.getByRole('heading', { name: 'Good morning' })).toBeInTheDocument()
-    expect(screen.getByText('Development workspace')).toBeInTheDocument()
+    expect(screen.getAllByText('Development workspace').length).toBeGreaterThan(0)
   })
 
   it('renders the planned accounting module at its route', () => {
