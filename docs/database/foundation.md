@@ -27,7 +27,7 @@ The SQL migration filenames in this repository use the exact versions recorded b
 7. `20261102094017_preserve_reversed_journals_in_ledger.sql` — preserves original posted entries alongside their reversing entries in ledger history.
 8. `20261102094403_single_company_installation.sql` — enforces one company workspace per database and records company creation in the audit log.
 9. `20261102095058_project_cost_management_foundation.sql` — projects, contracts, cost codes, cost centres, project budgets, project/overhead journal-line allocations, allocation RPC, posting control and attributed-cost views.
-10. `20261102095124_project_cost_foreign_key_indexes.sql` — supporting indexes for project/cost foreign keys.
+10. `20261102095152_project_cost_foreign_key_indexes.sql` — supporting indexes for project/cost foreign keys.
 
 ## Organisation and access
 
