@@ -8,6 +8,7 @@ import AuthPage from './pages/AuthPage'
 import CompanySetupPage from './pages/CompanySetupPage'
 import PartiesPage from './pages/PartiesPage'
 import EstimatesPage from './pages/EstimatesPage'
+import ProjectsPage from './pages/ProjectsPage'
 
 export default function App() {
   const {
@@ -58,7 +59,7 @@ export default function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<DashboardPage />} />
-        <Route path="projects" element={<ModulePage />} />
+        <Route path="projects" element={<ProjectsPage />} />
         <Route path="customers-suppliers" element={<PartiesPage />} />
         <Route path="estimates-boq" element={<EstimatesPage />} />
         <Route path="sales-invoicing" element={<ModulePage />} />
