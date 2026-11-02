@@ -1,25 +1,190 @@
-import { createContext,useCallback,useContext,useEffect,useMemo,useState,type ReactNode } from 'react'
-import type { Session,User } from '@supabase/supabase-js'
-import { isSupabaseConfigured,supabase } from '../lib/supabase'
-type Company={id:string;legal_name:string;display_name:string;base_currency:string}
-type State={client:typeof supabase;user:User|null;company:Company|null;roleCode:string|null;loading:boolean;configurationMissing:boolean;refreshCompany:()=>Promise<void>;signOut:()=>Promise<void>}
-const Context=createContext<State|null>(null)
-export function AuthProvider({children}:{children:ReactNode}){
- const [session,setSession]=useState<Session|null>(null);const [company,setCompany]=useState<Company|null>(null);const [roleCode,setRoleCode]=useState<string|null>(null);const [loading,setLoading]=useState(true)
- useEffect(()=>{if(!supabase){setLoading(false);return}let active=true
-  supabase.auth.getSession().then(({data})=>{if(active){setSession(data.session);setLoading(false)}})
-  const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{setSession(next);if(!next){setCompany(null);setRoleCode(null)}})
-  return()=>{active=false;subscription.unsubscribe()}
- },[])
- const refreshCompany=useCallback(async()=>{
-  if(!supabase||!session?.user){setCompany(null);setRoleCode(null);return}
-  const {data:m,error:me}=await supabase.from('company_memberships').select('company_id, roles(code)').eq('user_id',session.user.id).eq('status','active').limit(1).maybeSingle()
-  if(me)throw me;if(!m){setCompany(null);setRoleCode(null);return}
-  const {data:c,error:ce}=await supabase.from('companies').select('id,legal_name,display_name,base_currency').eq('id',m.company_id).single()
-  if(ce)throw ce;setCompany(c as Company);setRoleCode((m.roles as unknown as {code?:string}|null)?.code??null)
- },[session?.user?.id])
- useEffect(()=>{if(!loading&&session?.user)refreshCompany().catch(()=>{setCompany(null);setRoleCode(null)})},[loading,session?.user?.id,refreshCompany])
- const value=useMemo<State>(()=>({client:supabase,user:session?.user??null,company,roleCode,loading,configurationMissing:!isSupabaseConfigured,refreshCompany,signOut:async()=>{if(supabase)await supabase.auth.signOut()}}),[session,company,roleCode,loading,refreshCompany])
- return <Context.Provider value={value}>{children}</Context.Provider>
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { Session, User } from '@supabase/supabase-js'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
+
+type Company = {
+  id: string
+  legal_name: string
+  display_name: string
+  base_currency: string
 }
-export function useAuth(){const v=useContext(Context);if(!v)throw new Error('useAuth must be used within AuthProvider');return v}
+
+type State = {
+  client: typeof supabase
+  user: User | null
+  company: Company | null
+  roleCode: string | null
+  loading: boolean
+  companyLoading: boolean
+  companyError: string | null
+  configurationMissing: boolean
+  refreshCompany: () => Promise<void>
+  signOut: () => Promise<void>
+}
+
+const Context = createContext<State | null>(null)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null)
+  const [company, setCompany] = useState<Company | null>(null)
+  const [roleCode, setRoleCode] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [companyLoading, setCompanyLoading] = useState(false)
+  const [companyError, setCompanyError] = useState<string | null>(null)
+  const authEventVersion = useRef(0)
+  const companyRequestVersion = useRef(0)
+
+  useEffect(() => {
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
+
+    let active = true
+
+    // Subscribe before reading the stored session so an auth event cannot be
+    // overwritten by a slower initial getSession() response.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      authEventVersion.current += 1
+      setSession(nextSession)
+
+      if (!nextSession) {
+        companyRequestVersion.current += 1
+        setCompany(null)
+        setRoleCode(null)
+        setCompanyError(null)
+        setCompanyLoading(false)
+      }
+    })
+
+    const initialAuthEventVersion = authEventVersion.current
+
+    void supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active || authEventVersion.current !== initialAuthEventVersion) return
+        if (error) {
+          setSession(null)
+          return
+        }
+        setSession(data.session)
+      })
+      .catch(() => {
+        if (active && authEventVersion.current === initialAuthEventVersion) {
+          setSession(null)
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  const refreshCompany = useCallback(async () => {
+    const requestVersion = ++companyRequestVersion.current
+
+    if (!supabase || !session?.user) {
+      setCompany(null)
+      setRoleCode(null)
+      setCompanyError(null)
+      setCompanyLoading(false)
+      return
+    }
+
+    setCompanyLoading(true)
+    setCompanyError(null)
+
+    try {
+      const { data: membership, error: membershipError } = await supabase
+        .from('company_memberships')
+        .select('company_id, roles(code)')
+        .eq('user_id', session.user.id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle()
+
+      if (membershipError) throw membershipError
+
+      if (!membership) {
+        if (requestVersion === companyRequestVersion.current) {
+          setCompany(null)
+          setRoleCode(null)
+        }
+        return
+      }
+
+      const { data: companyData, error: companyErrorResult } = await supabase
+        .from('companies')
+        .select('id,legal_name,display_name,base_currency')
+        .eq('id', membership.company_id)
+        .single()
+
+      if (companyErrorResult) throw companyErrorResult
+
+      if (requestVersion === companyRequestVersion.current) {
+        setCompany(companyData as Company)
+        setRoleCode((membership.roles as unknown as { code?: string } | null)?.code ?? null)
+      }
+    } catch (error) {
+      if (requestVersion === companyRequestVersion.current) {
+        setCompany(null)
+        setRoleCode(null)
+        setCompanyError(
+          error instanceof Error ? error.message : 'Unable to load the company workspace.',
+        )
+      }
+      throw error
+    } finally {
+      if (requestVersion === companyRequestVersion.current) {
+        setCompanyLoading(false)
+      }
+    }
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    if (loading) return
+
+    if (!session?.user) {
+      companyRequestVersion.current += 1
+      setCompany(null)
+      setRoleCode(null)
+      setCompanyError(null)
+      setCompanyLoading(false)
+      return
+    }
+
+    void refreshCompany().catch(() => undefined)
+  }, [loading, session?.user?.id, refreshCompany])
+
+  const value = useMemo<State>(
+    () => ({
+      client: supabase,
+      user: session?.user ?? null,
+      company,
+      roleCode,
+      loading,
+      companyLoading,
+      companyError,
+      configurationMissing: !isSupabaseConfigured,
+      refreshCompany,
+      signOut: async () => {
+        if (supabase) await supabase.auth.signOut()
+      },
+    }),
+    [session, company, roleCode, loading, companyLoading, companyError, refreshCompany],
+  )
+
+  return <Context.Provider value={value}>{children}</Context.Provider>
+}
+
+export function useAuth() {
+  const value = useContext(Context)
+  if (!value) throw new Error('useAuth must be used within AuthProvider')
+  return value
+}
