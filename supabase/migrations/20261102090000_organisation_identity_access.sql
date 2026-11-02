@@ -323,7 +323,6 @@ grant select on public.roles, public.permissions, public.role_permissions to aut
 grant select, insert, update, delete on public.company_memberships to authenticated;
 grant select, insert, update, delete on public.branches, public.departments to authenticated;
 grant select on public.audit_logs to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
 
 comment on table public.companies is 'Company workspace root. Each customer deployment normally operates one company.';
 comment on table public.company_memberships is 'Maps authenticated users to company workspaces and system roles.';
