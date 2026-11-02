@@ -29,8 +29,19 @@ The test uses pgTAP and is intended for a local Supabase database after all
 migrations have been applied:
 
 ```sh
-supabase test db supabase/tests/accounting_views.test.sql
+supabase start
+supabase test db
 ```
+
+The committed `supabase/config.toml` pins the local database major version to
+PostgreSQL 17, matching the development project's major version. The database
+is created locally from the versioned migrations. The test runner wraps each
+SQL test in a transaction and rolls it back; no remote project credentials are
+needed or used.
+
+GitHub Actions runs the same database test suite against a fresh local
+Supabase stack on pull requests targeting `main` and pushes to `main` or
+`phase-*` branches.
 
 Do not run this fixture against the live development database. The current
 development database is intentionally empty of fiscal periods and journals.

@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(8);
+select extensions.plan(8);
 
 -- Isolated fixture: this test runs on a freshly migrated local Supabase database.
 create temporary table _accounting_fixture (
@@ -79,10 +79,10 @@ from _accounting_fixture f
 join public.chart_of_accounts a
   on a.company_id=f.company_id and a.account_code='1110';
 
-select has_column('public','general_ledger','normal_balance',
+select extensions.has_column('public','general_ledger','normal_balance',
   'General ledger exposes each account normal balance');
 
-select is(
+select extensions.is(
   (select normal_balance from public.account_balances
    where company_id=(select company_id from _accounting_fixture)
      and account_code='1590'),
@@ -168,5 +168,5 @@ select is(
   'Trial balance reflects the net-zero reversal'
 );
 
-select * from finish();
+select * from extensions.finish();
 rollback;
