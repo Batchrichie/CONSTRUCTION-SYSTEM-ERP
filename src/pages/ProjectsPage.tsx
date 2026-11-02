@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { Building2, CalendarDays, MapPin, Plus, Search, Pencil, FolderKanban } from 'lucide-react'
+import { Building2, MapPin, Plus, Search, Pencil, FolderKanban } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import Modal from '../components/Modal'
@@ -70,7 +70,7 @@ export default function ProjectsPage() {
   })
   const customersQ = useQuery({
     queryKey: ['project-customers', company?.id],
-    enabled: Boolean(client && company && canManage),
+    enabled: Boolean(client && company),
     queryFn: async () => {
       const { data, error } = await client!
         .from('business_parties')
