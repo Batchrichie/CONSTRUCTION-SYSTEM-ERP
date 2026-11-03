@@ -3,6 +3,11 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select extensions.plan(21);
 
+-- The application currently enforces one company per installation. Temporarily
+-- relax that installation constraint inside this rollback-only test transaction
+-- so tenant RLS can be exercised against two company-owned fixtures.
+drop index public.companies_single_workspace_per_database;
+
 create temporary table _budget_fixture (
   company_id uuid not null,
   owner_id uuid not null,
