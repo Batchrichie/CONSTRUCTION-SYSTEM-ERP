@@ -14,6 +14,7 @@ insert into _membership_fixture
 values (gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid());
 
 grant select, update on _membership_fixture to authenticated;
+grant select on _membership_fixture to service_role;
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
