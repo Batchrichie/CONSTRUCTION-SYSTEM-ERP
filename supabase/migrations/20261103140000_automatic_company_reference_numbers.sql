@@ -1,17 +1,14 @@
--- Generate company-scoped document references in the database.
+-- Generate installation-wide document references in the database.
 -- Counters are transaction-safe and are seeded from existing references to avoid collisions.
 
-create table private.company_reference_sequences (
-  company_id uuid not null references public.companies(id) on delete restrict,
-  sequence_key text not null,
-  next_value bigint not null check (next_value > 0),
-  primary key (company_id, sequence_key)
+create table private.reference_sequences (
+  sequence_key text primary key,
+  next_value bigint not null check (next_value > 0)
 );
 
-revoke all on private.company_reference_sequences from public, anon, authenticated;
+revoke all on private.reference_sequences from public, anon, authenticated;
 
-create or replace function private.next_company_reference(
-  p_company_id uuid,
+create or replace function private.next_reference(
   p_sequence_key text,
   p_prefix text,
   p_padding integer default 4
@@ -24,22 +21,22 @@ as $$
 declare
   v_number bigint;
 begin
-  if p_company_id is null or p_sequence_key is null or p_prefix is null
+  if p_sequence_key is null or p_prefix is null
      or p_padding < 1 or p_padding > 12 then
     raise exception 'Invalid reference number configuration' using errcode = '22023';
   end if;
 
-  insert into private.company_reference_sequences(company_id, sequence_key, next_value)
-  values (p_company_id, p_sequence_key, 2)
-  on conflict (company_id, sequence_key)
-  do update set next_value = private.company_reference_sequences.next_value + 1
+  insert into private.reference_sequences(sequence_key, next_value)
+  values (p_sequence_key, 2)
+  on conflict (sequence_key)
+  do update set next_value = private.reference_sequences.next_value + 1
   returning next_value - 1 into v_number;
 
   return p_prefix || '-' || lpad(v_number::text, greatest(p_padding, length(v_number::text)), '0');
 end;
 $$;
 
-revoke all on function private.next_company_reference(uuid,text,text,integer) from public, anon, authenticated;
+revoke all on function private.next_reference(text,text,integer) from public, anon, authenticated;
 
 create or replace function private.assign_company_reference()
 returns trigger
@@ -55,7 +52,7 @@ declare
 begin
   v_existing := to_jsonb(new)->>v_field;
   if nullif(btrim(v_existing), '') is null then
-    v_generated := private.next_company_reference(new.company_id, tg_table_name, v_prefix, 4);
+    v_generated := private.next_reference(tg_table_name, v_prefix, 4);
     new := jsonb_populate_record(new, jsonb_build_object(v_field, v_generated));
   end if;
   return new;
@@ -80,14 +77,14 @@ begin
     ) as refs(table_name, field_name, prefix)
   loop
     execute format(
-      'insert into private.company_reference_sequences(company_id, sequence_key, next_value)
-       select company_id, %L, coalesce(max((regexp_match(%I, %L))[1]::bigint), 0) + 1
+      'insert into private.reference_sequences(sequence_key, next_value)
+       select %L, coalesce(max((regexp_match(%I, %L))[1]::bigint), 0) + 1
        from public.%I
        where %I ~ %L
-       group by company_id
-       on conflict (company_id, sequence_key)
+       having count(*) > 0
+       on conflict (sequence_key)
        do update set next_value = greatest(
-         private.company_reference_sequences.next_value,
+         private.reference_sequences.next_value,
          excluded.next_value
        )',
       v_item.table_name,
@@ -125,5 +122,5 @@ create trigger estimates_assign_reference
 before insert on public.estimates
 for each row execute function private.assign_company_reference('estimate_number','EST');
 
-comment on table private.company_reference_sequences is
-  'Atomic company-scoped counters for system-generated project and commercial document references.';
+comment on table private.reference_sequences is
+  'Atomic installation-wide counters for system-generated project and commercial document references for the single company in this installation.';
