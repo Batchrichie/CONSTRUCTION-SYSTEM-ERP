@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CheckCircle2, ClipboardList, Plus, Receipt, Save, Send, Trash2 } from 'lucide-react'
+import { CheckCircle2, ClipboardList, Plus, Receipt, Save, Trash2 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import Modal from '../components/Modal'
@@ -494,8 +494,12 @@ export default function ExpenseAllocationPage() {
   async function postExistingDraft(journal: Journal) {
     if (!client || !company) return
     const lines = selectedExpenseLines
+    if (allocationsQ.isLoading || allocationsQ.isFetching || !allocationsQ.data) {
+      setError('Wait for the saved allocation details to finish loading before posting.')
+      return
+    }
     const incomplete = lines.filter(line => {
-      const rows = allocationDrafts[line.id] ?? []
+      const rows = allocationsQ.data!.filter(row => row.journal_line_id === line.id)
       const total = round4(rows.reduce((sum, row) => sum + amount(row.amount), 0))
       return total !== round4(lineAmount(line))
     })
@@ -614,7 +618,7 @@ export default function ExpenseAllocationPage() {
               return (
                 <section className="draft-expense-line" key={line.id}>
                   <div className="draft-expense-heading"><div><strong>{accounts.find(account => account.id === line.account_id)?.account_code ?? 'Expense account'} · {accounts.find(account => account.id === line.account_id)?.account_name ?? 'Expense'}</strong><small>{line.description || 'Expense journal line'} · {label(lineSide(line))}</small></div><div><strong>{money(lineAmount(line), currency)}</strong><small className={remaining === 0 ? 'balanced' : 'unbalanced'}>{remaining === 0 ? 'Fully allocated' : money(remaining, currency) + ' remaining'}</small></div></div>
-                  {rows.map((row, index) => (
+                  {allocationsQ.isLoading ? <p className="helper-text">Loading saved allocations…</p> : rows.map((row, index) => (
                     <div className="allocation-editor-row saved-allocation-row" key={index}>
                       <label>Destination<select value={row.attribution_scope} disabled={!canAllocate} onChange={event => updateSavedAllocation(line.id, index, { attribution_scope: event.target.value as 'project' | 'overhead', project_id: event.target.value === 'project' ? projects[0]?.id ?? '' : '', cost_centre_id: event.target.value === 'overhead' ? costCentres[0]?.id ?? '' : '' })}><option value="project">Project</option><option value="overhead">Overhead</option></select></label>
                       {row.attribution_scope === 'project' ? (
@@ -629,13 +633,13 @@ export default function ExpenseAllocationPage() {
                       {canAllocate && <button type="button" className="icon-remove" aria-label="Remove allocation" onClick={() => setAllocationDrafts(current => ({ ...current, [line.id]: (current[line.id] ?? []).filter((_, rowIndex) => rowIndex !== index) }))}><Trash2 size={14} /></button>}
                     </div>
                   ))}
-                  {canAllocate && <div className="draft-line-actions"><button type="button" className="text-button" onClick={() => addSavedAllocation(line)}><Plus size={12} /> Add allocation</button><button type="button" className="outline-button" onClick={() => void saveLineAllocations(line)} disabled={busy}><Save size={12} /> Save line allocations</button></div>}
+                  {canAllocate && <div className="draft-line-actions"><button type="button" className="text-button" onClick={() => addSavedAllocation(line)}><Plus size={12} /> Add allocation</button><button type="button" className="outline-button" onClick={() => void saveLineAllocations(line)} disabled={busy || allocationsQ.isLoading || allocationsQ.isFetching}><Save size={12} /> Save line allocations</button></div>}
                 </section>
               )
             })}
             {error && <div className="form-alert error">{error}</div>}
             <div className="form-actions">
-              {canPost && <button type="button" className="primary-button" onClick={() => void postExistingDraft(selectedJournal)} disabled={busy || selectedExpenseLines.length === 0}><CheckCircle2 size={13} /> {busy ? 'Posting…' : 'Post journal'}</button>}
+              {canPost && <button type="button" className="primary-button" onClick={() => void postExistingDraft(selectedJournal)} disabled={busy || selectedExpenseLines.length === 0 || allocationsQ.isLoading || allocationsQ.isFetching}><CheckCircle2 size={13} /> {busy ? 'Posting…' : 'Post journal'}</button>}
             </div>
             <p className="page-footnote">Posting is permitted only when each expense debit and credit is fully allocated and the journal passes the database accounting-period and double-entry checks.</p>
           </div>
