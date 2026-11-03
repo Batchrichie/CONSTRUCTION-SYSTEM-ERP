@@ -37,11 +37,11 @@ insert into public.cost_centres (company_id,name,centre_type)
 values ('d2a65e38-87f2-4f44-9b89-a0a88f61a1a2','Head Office','overhead');
 
 insert into public.estimates (
-  company_id,customer_party_id,title
+  company_id,customer_party_id,title,created_by
 ) values (
   'd2a65e38-87f2-4f44-9b89-a0a88f61a1a2',
   (select id from public.business_parties where legal_name='Reference Test Customer'),
-  'Reference Number Estimate'
+  'Reference Number Estimate','d2a65e38-87f2-4f44-9b89-a0a88f61a1a1'
 );
 
 select extensions.is(
