@@ -183,8 +183,10 @@ begin
   if not private.has_company_permission(p_company_id, 'project_costs.manage') then
     raise exception 'You do not have permission to manage project budgets' using errcode = '42501';
   end if;
-  if p_lines is null or jsonb_typeof(p_lines) <> 'array'
-     or jsonb_array_length(p_lines) < 1 or jsonb_array_length(p_lines) > 200 then
+  if p_lines is null or jsonb_typeof(p_lines) is distinct from 'array' then
+    raise exception 'Budget lines must be supplied as a JSON array' using errcode = '22023';
+  end if;
+  if jsonb_array_length(p_lines) < 1 or jsonb_array_length(p_lines) > 200 then
     raise exception 'A budget must contain between 1 and 200 cost-code lines' using errcode = '22023';
   end if;
 
@@ -425,7 +427,7 @@ begin
   if v_user_id is null then
     raise exception 'Authentication is required' using errcode = '28000';
   end if;
-  if p_new_status not in ('submitted','approved','rejected') then
+  if p_new_status is null or p_new_status not in ('submitted','approved','rejected') then
     raise exception 'Unsupported budget status transition' using errcode = '22023';
   end if;
 
