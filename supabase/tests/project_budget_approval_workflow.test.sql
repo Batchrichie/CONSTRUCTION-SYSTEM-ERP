@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(16);
+select extensions.plan(18);
 
 create temporary table _budget_fixture (
   company_id uuid not null,
@@ -71,6 +71,19 @@ select extensions.is(
   (select count(*)::integer from public.project_budgets where budget_version_id=(select budget_id from _budget_fixture)),
   1,
   'Budget lines are saved against the revision'
+);
+
+select extensions.has_column(
+  'public',
+  'project_budgets',
+  'legacy_approved_amount',
+  'The migration retains the pre-workflow approved amount for audit'
+);
+
+select extensions.is(
+  (select approved_amount from public.project_budgets where budget_version_id=(select budget_id from _budget_fixture)),
+  0::numeric,
+  'A newly saved draft has no approved amount before the new approval workflow'
 );
 
 select extensions.throws_ok(
