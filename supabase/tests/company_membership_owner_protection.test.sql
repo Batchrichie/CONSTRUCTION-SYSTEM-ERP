@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(6);
+select extensions.plan(7);
 
 create temporary table _membership_fixture (
   company_id uuid not null,
@@ -32,21 +32,35 @@ select successor_id, 'authenticated', 'authenticated',
        '{}'::jsonb, '{}'::jsonb
 from _membership_fixture;
 
-insert into public.companies (
-  id, legal_name, display_name, base_currency, country_code, created_by
-)
-select company_id, 'Membership Guard Test', 'Membership Test',
-       'GHS', 'GH', owner_id
-from _membership_fixture;
+-- Exercise the real first-owner onboarding path. The membership trigger
+-- must allow the creator's initial owner row but no later privilege escalation.
+select set_config(
+  'request.jwt.claim.sub',
+  (select owner_id::text from _membership_fixture),
+  true
+);
+
+update _membership_fixture
+set company_id = public.create_company_for_current_user(
+  'Membership Guard Test',
+  'Membership Test'
+);
+
+select extensions.is(
+  (select count(*)::integer
+   from public.company_memberships m
+   join public.roles r on r.id = m.role_id
+   where m.company_id = (select company_id from _membership_fixture)
+     and m.user_id = (select owner_id from _membership_fixture)
+     and r.code = 'owner'
+     and m.status = 'active'),
+  1,
+  'Company onboarding creates the first active owner membership'
+);
 
 insert into public.company_memberships (
   company_id, user_id, role_id, status, joined_at
 )
-select f.company_id, f.owner_id, r.id, 'active', now()
-from _membership_fixture f
-cross join public.roles r
-where r.code = 'owner'
-union all
 select f.company_id, f.admin_id, r.id, 'active', now()
 from _membership_fixture f
 cross join public.roles r
