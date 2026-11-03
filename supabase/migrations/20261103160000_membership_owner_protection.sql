@@ -52,6 +52,10 @@ begin
     from public.roles r
     where r.id = new.role_id;
 
+    if v_new_role in ('owner', 'admin') then
+      perform 1 from public.companies c where c.id = new.company_id for update;
+    end if;
+
     if v_new_role in ('owner', 'admin')
        and not private.is_company_owner(new.company_id) then
       -- The first owner is created by the controlled company-onboarding
@@ -84,6 +88,10 @@ begin
     raise exception 'A membership cannot be reassigned to another company or user'
       using errcode = '42501';
   end if;
+
+  -- Serialize membership changes within a company so concurrent owner removals
+  -- cannot both observe a different active owner and leave the workspace ownerless.
+  perform 1 from public.companies c where c.id = old.company_id for update;
 
   select r.code into v_old_role
   from public.roles r
