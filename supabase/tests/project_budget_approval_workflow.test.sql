@@ -219,13 +219,16 @@ select extensions.throws_ok(
   'An approved budget revision is immutable'
 );
 
+update _budget_fixture f
+set budget_id = public.create_project_budget_revision(
+  f.company_id,
+  f.project_id,
+  f.revision_id
+);
+
 select extensions.is(
   (select revision_number from public.project_budget_versions
-   where id = public.create_project_budget_revision(
-     (select company_id from _budget_fixture),
-     (select project_id from _budget_fixture),
-     (select revision_id from _budget_fixture)
-   )),
+   where id = (select budget_id from _budget_fixture)),
   3,
   'A rejected budget can be copied into the next revision'
 );
