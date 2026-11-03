@@ -39,11 +39,14 @@ select owner_id, 'authenticated', 'authenticated',
        '{}'::jsonb, '{}'::jsonb
 from _project_cost_fixture;
 
+grant select, update on _project_cost_fixture to authenticated;
+
 select set_config(
   'request.jwt.claim.sub',
   (select owner_id::text from _project_cost_fixture),
   true
 );
+set local role authenticated;
 
 -- Create the company and first owner through the authenticated onboarding RPC.
 update _project_cost_fixture
@@ -52,8 +55,10 @@ set company_id = public.create_company_for_current_user(
   'Project Cost Test'
 );
 
+reset role;
 select private.seed_default_chart_of_accounts(company_id)
 from _project_cost_fixture;
+set local role authenticated;
 
 -- Open the fiscal year and accounting period through their public workflows.
 update _project_cost_fixture
@@ -111,12 +116,6 @@ update _project_cost_fixture f
 set cash_account_id = a.id
 from public.chart_of_accounts a
 where a.company_id = f.company_id and a.account_code = '1110';
-
-select set_config(
-  'request.jwt.claim.sub',
-  (select owner_id::text from _project_cost_fixture),
-  true
-);
 
 update _project_cost_fixture f
 set journal_id = public.create_journal_draft(
@@ -330,5 +329,6 @@ select extensions.is(
   'The original expense and its reversal net project cost to zero'
 );
 
+reset role;
 select * from extensions.finish();
 rollback;
