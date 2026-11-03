@@ -249,10 +249,15 @@ begin
 
   for v_line in select value from jsonb_array_elements(p_lines)
   loop
+    if nullif(v_line->>'budget_amount', '') is null
+       or (v_line->>'budget_amount') !~ '^[+]?[0-9]+([.][0-9]{1,4})?$' then
+      raise exception 'Budget amounts must not exceed 4 decimal places (line %)', v_count + 1
+        using errcode = '22023';
+    end if;
+
     begin
       v_cost_code_id := nullif(v_line->>'cost_code_id', '')::uuid;
-      if nullif(v_line->>'budget_amount', '') is null
-         or (v_line->>'budget_amount') !~ '^[+]?(?:[0-9]+(?:[.][0-9]{1,4})?|[.][0-9]{1,4})
+      v_amount := (v_line->>'budget_amount')::numeric;
       v_notes := nullif(btrim(coalesce(v_line->>'notes', '')), '');
     exception when others then
       raise exception 'Invalid budget line data' using errcode = '22023';
