@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(12);
+select extensions.plan(16);
 
 create temporary table _budget_fixture (
   company_id uuid not null,
@@ -168,6 +168,17 @@ select extensions.throws_ok(
   '22023',
   'Only draft budget revisions can be edited',
   'An approved budget revision is immutable'
+);
+
+select extensions.is(
+  (select revision_number from public.project_budget_versions
+   where id = public.create_project_budget_revision(
+     (select company_id from _budget_fixture),
+     (select project_id from _budget_fixture),
+     (select revision_id from _budget_fixture)
+   )),
+  3,
+  'A rejected budget can be copied into the next revision'
 );
 
 select * from extensions.finish();
