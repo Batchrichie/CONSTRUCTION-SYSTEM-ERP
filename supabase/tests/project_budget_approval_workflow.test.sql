@@ -153,6 +153,39 @@ select extensions.is(
   'Copied revision lines require fresh approval'
 );
 
+select public.transition_project_budget(
+  (select company_id from _budget_fixture),
+  (select revision_id from _budget_fixture),
+  'submitted',
+  null
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.transition_project_budget(%L::uuid,%L::uuid,%L,%L)',
+    (select company_id from _budget_fixture),
+    (select revision_id from _budget_fixture),
+    'rejected',
+    null
+  ),
+  '22023',
+  'A rejection reason is required',
+  'A budget cannot be rejected without a reason'
+);
+
+select public.transition_project_budget(
+  (select company_id from _budget_fixture),
+  (select revision_id from _budget_fixture),
+  'rejected',
+  'Update the labour allowance and supporting assumptions'
+);
+
+select extensions.is(
+  (select status from public.project_budget_versions where id=(select revision_id from _budget_fixture)),
+  'rejected',
+  'An owner can reject a submitted revision with a reason'
+);
+
 select extensions.throws_ok(
   format(
     'select public.save_project_budget_draft(%L::uuid,%L::uuid,%L::uuid,%L,%L::jsonb)',
