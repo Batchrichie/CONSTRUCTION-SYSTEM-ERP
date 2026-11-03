@@ -38,7 +38,11 @@ create table public.project_budget_versions (
 );
 
 -- Preserve existing budget rows while attaching them to a first revision.
+-- Preserve legacy approval figures for audit while ensuring that the
+-- newly introduced workflow does not treat an unreviewed migrated draft as approved.
 alter table public.project_budgets
+  add column legacy_approved_amount numeric(20,4) not null default 0
+    check (legacy_approved_amount >= 0),
   add column budget_version_id uuid;
 
 insert into public.project_budget_versions (
@@ -64,6 +68,12 @@ from public.project_budget_versions v
 where v.company_id = b.company_id
   and v.project_id = b.project_id
   and v.revision_number = 1;
+
+-- The old approved_amount column had no revision-level approval evidence.
+-- Archive it verbatim, then reset the live approval amount for the new draft.
+update public.project_budgets
+set legacy_approved_amount = approved_amount,
+    approved_amount = 0;
 
 alter table public.project_budgets
   alter column budget_version_id set not null;
@@ -516,3 +526,6 @@ comment on table public.project_budget_versions is
   'Versioned project budget submissions with controlled owner/administrator approval.';
 comment on table public.project_budget_history is
   'Append-only status transition history for project budget revisions.';
+
+comment on column public.project_budgets.legacy_approved_amount is
+  'Original pre-workflow approved amount retained during migration for audit; not treated as approval in the versioned workflow.';
