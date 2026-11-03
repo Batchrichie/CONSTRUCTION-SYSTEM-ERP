@@ -83,6 +83,9 @@ alter table public.project_budgets
 
 create index project_budget_versions_project_status_idx
   on public.project_budget_versions(company_id, project_id, status, revision_number desc);
+create unique index project_budget_versions_one_open_revision_idx
+  on public.project_budget_versions(company_id, project_id)
+  where status in ('draft','submitted');
 create index project_budgets_version_idx
   on public.project_budgets(company_id, budget_version_id, cost_code_id);
 
@@ -194,6 +197,13 @@ begin
   end if;
 
   if p_budget_version_id is null then
+    if exists (
+      select 1 from public.project_budget_versions
+      where company_id = p_company_id and project_id = p_project_id
+        and status in ('draft','submitted')
+    ) then
+      raise exception 'A draft or submitted budget already exists for this project' using errcode = '23505';
+    end if;
     select coalesce(max(revision_number), 0) + 1 into v_revision
     from public.project_budget_versions
     where company_id = p_company_id and project_id = p_project_id;
@@ -319,6 +329,14 @@ begin
   for update;
   if not found or v_project.status = 'cancelled' then
     raise exception 'Project not found or cancelled' using errcode = 'P0002';
+  end if;
+
+  if exists (
+    select 1 from public.project_budget_versions
+    where company_id = p_company_id and project_id = p_project_id
+      and status in ('draft','submitted')
+  ) then
+    raise exception 'A draft or submitted budget already exists for this project' using errcode = '23505';
   end if;
 
   if p_source_budget_version_id is null then
