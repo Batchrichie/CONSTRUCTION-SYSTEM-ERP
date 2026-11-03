@@ -36,7 +36,6 @@ type ActualCost = {
 }
 type CostCode = { id: string; code: string; name: string; category: string }
 
-const label = (value: string) => value.replaceAll('_', ' ').replace(/\\b\\w/g, character => character.toUpperCase())
 const money = (value: number, currency: string) => new Intl.NumberFormat('en-GH', {
   style: 'currency', currency: currency || 'GHS', minimumFractionDigits: 2, maximumFractionDigits: 2,
 }).format(value)
