@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ProjectsPage from './ProjectsPage'
@@ -45,7 +46,7 @@ function queryBuilder(data: unknown[] = []) {
   return builder
 }
 
-function renderPage(page: React.ReactNode) {
+function renderPage(page: ReactNode) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
