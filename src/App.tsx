@@ -12,6 +12,7 @@ import ProjectsPage from './pages/ProjectsPage'
 import ProjectCostSetupPage from './pages/ProjectCostSetupPage'
 import ProjectBudgetsPage from './pages/ProjectBudgetsPage'
 import ExpenseAllocationPage from './pages/ExpenseAllocationPage'
+import BudgetVsActualPage from './pages/BudgetVsActualPage'
 
 export default function App() {
   const {
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="project-costs" element={<ProjectCostSetupPage />} />
         <Route path="project-budgets" element={<ProjectBudgetsPage />} />
         <Route path="expense-allocation" element={<ExpenseAllocationPage />} />
+        <Route path="budget-vs-actual" element={<BudgetVsActualPage />} />
         <Route path="customers-suppliers" element={<PartiesPage />} />
         <Route path="estimates-boq" element={<EstimatesPage />} />
         <Route path="sales-invoicing" element={<ModulePage />} />

@@ -201,3 +201,19 @@ h1{font:700 28px Manrope,sans-serif;letter-spacing:-.8px;margin-bottom:6px;color
 .sidebar-navigation::-webkit-scrollbar-thumb{background:#43536a;border-radius:8px}
 .nav-section{flex:0 0 auto}
 .sidebar-footer{margin-top:0}
+
+
+/* Phase 7.4 Step 5 — budget versus actual reporting */
+.report-icon{width:38px;height:38px;display:grid;place-items:center;border:1px solid #e5eaf0;border-radius:9px;color:#53647a;background:#fff}
+.budget-actual-filters{padding:15px;margin-bottom:15px}
+.budget-actual-filter-grid{display:grid;grid-template-columns:minmax(220px,1.4fr) repeat(2,minmax(150px,.7fr));gap:12px}
+.budget-actual-filter-grid label{display:flex;flex-direction:column;gap:6px;font-size:10px;font-weight:600;color:#5b6879}
+.budget-actual-filter-grid select,.budget-actual-filter-grid input{width:100%;min-width:0;border:1px solid #dfe5eb;border-radius:5px;padding:9px;background:#fff;color:#263449;font:11px 'DM Sans',sans-serif}
+.budget-actual-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:15px}
+.budget-actual-summary{padding:15px;display:flex;flex-direction:column;gap:12px}
+.budget-actual-summary>div{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.budget-actual-summary>div span{font-size:10px;color:#788596}
+.budget-actual-summary>div strong{font-size:12px;color:#29384d;text-align:right}
+.budget-actual-summary>small{font-size:9px;color:#8994a4;border-top:1px solid #edf0f3;padding-top:8px}
+.budget-actual-warning{display:flex;align-items:flex-start;gap:8px}
+@media(max-width:650px){.budget-actual-filter-grid{grid-template-columns:1fr}.budget-actual-summary-grid{grid-template-columns:1fr}}
