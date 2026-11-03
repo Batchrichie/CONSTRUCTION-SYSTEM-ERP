@@ -39,38 +39,50 @@ select owner_id, 'authenticated', 'authenticated',
        '{}'::jsonb, '{}'::jsonb
 from _project_cost_fixture;
 
-insert into public.companies (
-  id, legal_name, display_name, base_currency, country_code, created_by
-)
-select company_id, 'Project Cost Test Company', 'Project Cost Test',
-       'GHS', 'GH', owner_id
-from _project_cost_fixture;
+select set_config(
+  'request.jwt.claim.sub',
+  (select owner_id::text from _project_cost_fixture),
+  true
+);
+
+-- Create the company and first owner through the authenticated onboarding RPC.
+update _project_cost_fixture
+set company_id = public.create_company_for_current_user(
+  'Project Cost Test Company',
+  'Project Cost Test'
+);
 
 select private.seed_default_chart_of_accounts(company_id)
 from _project_cost_fixture;
 
-insert into public.company_memberships (
-  company_id, user_id, role_id, status, joined_at
-)
-select f.company_id, f.owner_id, r.id, 'active', now()
-from _project_cost_fixture f
-cross join public.roles r
-where r.code = 'owner';
+-- Open the fiscal year and accounting period through their public workflows.
+update _project_cost_fixture
+set fiscal_year_id = public.create_fiscal_year(
+  company_id,
+  'PC-' || left(company_id::text, 8),
+  date '2026-01-01',
+  date '2026-12-31'
+);
 
-insert into public.fiscal_years (
-  id, company_id, year_code, start_date, end_date, status, created_by
-)
-select fiscal_year_id, company_id, 'PC-' || left(company_id::text, 8),
-       date '2026-01-01', date '2026-12-31', 'open', owner_id
-from _project_cost_fixture;
+select public.transition_fiscal_year_status(
+  (select fiscal_year_id from _project_cost_fixture),
+  'open'
+);
 
-insert into public.accounting_periods (
-  id, company_id, fiscal_year_id, period_number, period_name,
-  start_date, end_date, status
-)
-select period_id, company_id, fiscal_year_id, 1, 'January',
-       date '2026-01-01', date '2026-01-31', 'open'
-from _project_cost_fixture;
+update _project_cost_fixture
+set period_id = public.create_accounting_period(
+  company_id,
+  fiscal_year_id,
+  1::smallint,
+  'January',
+  date '2026-01-01',
+  date '2026-01-31'
+);
+
+select public.transition_accounting_period_status(
+  (select period_id from _project_cost_fixture),
+  'open'
+);
 
 insert into public.projects (
   id, company_id, project_code, name, created_by
