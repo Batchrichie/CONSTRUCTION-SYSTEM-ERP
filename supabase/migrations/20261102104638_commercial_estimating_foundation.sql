@@ -666,3 +666,26 @@ grant select on public.estimate_totals to authenticated;
 revoke all on public.business_parties, public.party_contacts, public.estimates,
   public.estimate_sections, public.estimate_items, public.estimate_status_history,
   public.estimate_totals from anon;
+
+
+-- Preserve entered precision so PostgreSQL can reject (rather than silently
+-- round) values carrying more than four decimal places at the Data API boundary.
+alter table public.estimates
+  alter column discount_amount type numeric using discount_amount::numeric,
+  alter column tax_amount type numeric using tax_amount::numeric;
+
+alter table public.estimates
+  add constraint estimates_discount_amount_max_4dp
+    check (discount_amount >= 0 and scale(discount_amount) <= 4),
+  add constraint estimates_tax_amount_max_4dp
+    check (tax_amount >= 0 and scale(tax_amount) <= 4);
+
+alter table public.estimate_items
+  alter column quantity type numeric using quantity::numeric,
+  alter column unit_rate type numeric using unit_rate::numeric;
+
+alter table public.estimate_items
+  add constraint estimate_items_quantity_max_4dp
+    check (quantity > 0 and scale(quantity) <= 4),
+  add constraint estimate_items_unit_rate_max_4dp
+    check (unit_rate >= 0 and scale(unit_rate) <= 4);
