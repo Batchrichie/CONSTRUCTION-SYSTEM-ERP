@@ -330,10 +330,10 @@ begin
     select * into v_source
     from public.project_budget_versions
     where company_id = p_company_id and project_id = p_project_id
-      and id = p_source_budget_version_id and status = 'approved';
+      and id = p_source_budget_version_id and status in ('approved','rejected');
   end if;
   if not found then
-    raise exception 'An approved budget revision is required to create a revision' using errcode = 'P0002';
+    raise exception 'An approved or rejected budget revision is required to create a revision' using errcode = 'P0002';
   end if;
 
   select coalesce(max(revision_number), 0) + 1 into v_revision
