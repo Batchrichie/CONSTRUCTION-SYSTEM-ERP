@@ -117,7 +117,7 @@ export default function ExpenseAllocationPage() {
   const queryClient = useQueryClient()
   const canRead = ['owner', 'admin', 'accountant'].includes(roleCode ?? '')
   const canCreate = ['owner', 'admin', 'accountant'].includes(roleCode ?? '')
-  const canAllocate = ['owner', 'admin', 'accountant', 'project_manager'].includes(roleCode ?? '')
+  const canAllocate = ['owner', 'admin', 'accountant'].includes(roleCode ?? '')
   const canPost = ['owner', 'admin', 'accountant'].includes(roleCode ?? '')
   const [showCreate, setShowCreate] = useState(false)
   const [selectedJournalId, setSelectedJournalId] = useState<string | null>(null)
@@ -627,7 +627,7 @@ export default function ExpenseAllocationPage() {
               const remaining = unitsToNumber(remainingUnits)
               return (
                 <section className="draft-expense-line" key={line.id}>
-                  <div className="draft-expense-heading"><div><strong>{accounts.find(account => account.id === line.account_id)?.account_code ?? 'Expense account'} · {accounts.find(account => account.id === line.account_id)?.account_name ?? 'Expense'}</strong><small>{line.description || 'Expense journal line'} · {label(lineSide(line))}</small></div><div><strong>{money(lineAmount(line), currency)}</strong><small className={remainingUnits === 0n ? 'balanced' : 'unbalanced'}>{remainingUnits === 0n ? 'Fully allocated' : money(remaining, currency) + ' remaining'}</small></div></div>
+                  <div className="draft-expense-heading"><div><strong>{accounts.find(account => account.id === line.account_id)?.account_code ?? 'Expense account'} · {accounts.find(account => account.id === line.account_id)?.account_name ?? 'Expense'}</strong><small>{line.description || 'Expense journal line'} · {label(lineSide(line))}</small></div><div><strong>{money(lineAmount(line), currency)}</strong><small className={remainingUnits === 0n ? 'balanced' : 'unbalanced'}>{remainingUnits === 0n ? 'Fully allocated' : remainingUnits < 0n ? money(Math.abs(remaining), currency) + ' over-allocated' : money(remaining, currency) + ' remaining'}</small></div></div>
                   {allocationsQ.isLoading ? <p className="helper-text">Loading saved allocations…</p> : rows.map((row, index) => (
                     <div className="allocation-editor-row saved-allocation-row" key={index}>
                       <label>Destination<select value={row.attribution_scope} disabled={!canAllocate} onChange={event => updateSavedAllocation(line.id, index, { attribution_scope: event.target.value as 'project' | 'overhead', project_id: event.target.value === 'project' ? projects[0]?.id ?? '' : '', cost_centre_id: event.target.value === 'overhead' ? costCentres[0]?.id ?? '' : '' })}><option value="project">Project</option><option value="overhead">Overhead</option></select></label>
