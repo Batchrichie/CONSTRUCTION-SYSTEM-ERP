@@ -192,8 +192,12 @@ h1{font:700 28px Manrope,sans-serif;letter-spacing:-.8px;margin-bottom:6px;color
 @media(max-width:600px){.expense-entry-grid,.allocation-editor-row,.saved-allocation-row,.settlement-editor-row,.expense-totals{grid-template-columns:1fr}.expense-description{grid-column:auto}.allocation-editor-row .icon-remove,.settlement-editor-row .icon-remove{justify-self:start}.draft-expense-heading{align-items:flex-start;flex-direction:column}.draft-expense-heading>div:last-child{text-align:left}.draft-line-actions{align-items:flex-start;flex-direction:column}}
 
 
-/* Keep the full desktop navigation reachable when the sidebar content exceeds viewport height. */
-@media(min-width:701px){
- .sidebar{min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;scrollbar-width:thin;scrollbar-color:#43536a #111d2d}
- .sidebar-footer{flex-shrink:0}
-}
+/* Keep sidebar branding and footer visible while the navigation scrolls independently. */
+.sidebar{height:100vh;height:100dvh;min-height:0;overflow:hidden}
+.brand,.company-switcher,.sidebar-footer{flex:0 0 auto}
+.sidebar-navigation{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding-right:4px;scrollbar-width:thin;scrollbar-color:#43536a #111d2d}
+.sidebar-navigation::-webkit-scrollbar{width:6px}
+.sidebar-navigation::-webkit-scrollbar-track{background:#111d2d}
+.sidebar-navigation::-webkit-scrollbar-thumb{background:#43536a;border-radius:8px}
+.nav-section{flex:0 0 auto}
+.sidebar-footer{margin-top:0}
