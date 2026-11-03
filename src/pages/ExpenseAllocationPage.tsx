@@ -345,7 +345,7 @@ export default function ExpenseAllocationPage() {
 
   async function saveLineAllocations(line: JournalLine) {
     if (!client || !company) return
-    if (allocationsQ.isLoading || allocationsQ.isFetching || !allocationsQ.data) {
+    if (allocationsQ.isLoading || allocationsQ.isFetching || allocationsQ.isError || !allocationsQ.data) {
       setError('Wait for saved allocation details to finish loading before changing this line.')
       return
     }
@@ -500,7 +500,7 @@ export default function ExpenseAllocationPage() {
   async function postExistingDraft(journal: Journal) {
     if (!client || !company) return
     const lines = selectedExpenseLines
-    if (allocationsQ.isLoading || allocationsQ.isFetching || !allocationsQ.data) {
+    if (allocationsQ.isLoading || allocationsQ.isFetching || allocationsQ.isError || !allocationsQ.data) {
       setError('Wait for the saved allocation details to finish loading before posting.')
       return
     }
@@ -645,7 +645,7 @@ export default function ExpenseAllocationPage() {
             })}
             {error && <div className="form-alert error">{error}</div>}
             <div className="form-actions">
-              {canPost && <button type="button" className="primary-button" onClick={() => void postExistingDraft(selectedJournal)} disabled={busy || selectedExpenseLines.length === 0 || allocationsQ.isLoading || allocationsQ.isFetching}><CheckCircle2 size={13} /> {busy ? 'Posting…' : 'Post journal'}</button>}
+              {canPost && <button type="button" className="primary-button" onClick={() => void postExistingDraft(selectedJournal)} disabled={busy || selectedExpenseLines.length === 0 || allocationsQ.isLoading || allocationsQ.isFetching || allocationsQ.isError || !allocationsQ.data}><CheckCircle2 size={13} /> {busy ? 'Posting…' : 'Post journal'}</button>}
             </div>
             <p className="page-footnote">Posting is permitted only when each expense debit and credit is fully allocated and the journal passes the database accounting-period and double-entry checks.</p>
           </div>
