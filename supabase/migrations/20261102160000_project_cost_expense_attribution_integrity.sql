@@ -86,14 +86,19 @@ begin
   for v_item in
     select value from jsonb_array_elements(p_allocations)
   loop
+    if nullif(v_item->>'amount', '') is null
+       or (v_item->>'amount') !~ '^[+]?[0-9]+([.][0-9]{1,4})?$' then
+      raise exception 'Allocation amounts must not exceed 4 decimal places'
+        using errcode = '22023';
+    end if;
+
     begin
       v_scope := v_item->>'attribution_scope';
       v_project_id := nullif(v_item->>'project_id', '')::uuid;
       v_cost_code_id := nullif(v_item->>'cost_code_id', '')::uuid;
       v_cost_centre_id := nullif(v_item->>'cost_centre_id', '')::uuid;
       v_side := v_item->>'allocation_side';
-      if nullif(v_item->>'amount', '') is null
-         or (v_item->>'amount') !~ '^[+]?(?:[0-9]+(?:[.][0-9]{1,4})?|[.][0-9]{1,4})
+      v_amount := (v_item->>'amount')::numeric;
     exception when others then
       raise exception 'Invalid allocation data' using errcode = '22023';
     end;
