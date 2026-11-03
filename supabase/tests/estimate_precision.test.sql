@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(4);
+select extensions.plan(6);
 
 create temporary table _estimate_precision_fixture (
   owner_id uuid not null,
@@ -63,6 +63,20 @@ select extensions.throws_ok(
   'Estimate discounts with more than four decimal places are rejected without rounding'
 );
 
+select extensions.throws_ok(
+  format(
+    'insert into public.estimates(company_id,estimate_number,customer_party_id,title,discount_amount,tax_amount) values (%L::uuid,%L,%L::uuid,%L,0,%L::numeric)',
+    (select company_id from _estimate_precision_fixture),
+    'EST-INVALID-TAX',
+    (select party_id from _estimate_precision_fixture),
+    'Invalid tax precision estimate',
+    '0.00001'
+  ),
+  '23514',
+  'new row for relation "estimates" violates check constraint "estimates_tax_amount_max_4dp"',
+  'Estimate tax amounts with more than four decimal places are rejected without rounding'
+);
+
 with inserted as (
   insert into public.estimates (
     company_id, estimate_number, customer_party_id, title
@@ -73,6 +87,22 @@ with inserted as (
 )
 update _estimate_precision_fixture
 set estimate_id = (select id from inserted);
+
+select extensions.throws_ok(
+  format(
+    'insert into public.estimate_items(company_id,estimate_id,item_number,description,unit,quantity,unit_rate) values (%L::uuid,%L::uuid,%L,%L,%L,%L::numeric,%L::numeric)',
+    (select company_id from _estimate_precision_fixture),
+    (select estimate_id from _estimate_precision_fixture),
+    'ITEM-INVALID-QUANTITY',
+    'Invalid quantity',
+    'item',
+    '1.00001',
+    '1'
+  ),
+  '23514',
+  'new row for relation "estimate_items" violates check constraint "estimate_items_quantity_max_4dp"',
+  'BOQ quantities with more than four decimal places are rejected without rounding'
+);
 
 select extensions.throws_ok(
   format(
