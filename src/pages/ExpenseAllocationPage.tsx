@@ -85,6 +85,14 @@ const decimalUnits = (value: string | number | null | undefined): bigint | null 
 }
 const exactUnits = (value: string | number | null | undefined) => decimalUnits(value) ?? 0n
 const sumUnits = (values: Array<string | number | null | undefined>) => values.reduce((sum, value) => sum + exactUnits(value), 0n)
+const unitsToString = (units: bigint) => {
+  const negative = units < 0n
+  const absolute = negative ? -units : units
+  const whole = absolute / 10000n
+  const fraction = (absolute % 10000n).toString().padStart(4, '0').replace(/0+$/, '')
+  return (negative ? '-' : '') + whole.toString() + (fraction ? '.' + fraction : '')
+}
+const unitsToNumber = (units: bigint) => Number(unitsToString(units))
 const isPositiveAmount = (value: string | number | null | undefined) => {
   const units = decimalUnits(value)
   return units !== null && units > 0n
@@ -251,8 +259,10 @@ export default function ExpenseAllocationPage() {
     () => expenseLines.filter(line => line.journal_entry_id === selectedJournalId),
     [expenseLines, selectedJournalId],
   )
-  const expenseTotal = form.expense_lines.reduce((sum, line) => sum + amount(line.amount), 0)
-  const settlementTotal = form.settlement_lines.reduce((sum, line) => sum + amount(line.amount), 0)
+  const expenseTotalUnits = sumUnits(form.expense_lines.map(line => line.amount))
+  const settlementTotalUnits = sumUnits(form.settlement_lines.map(line => line.amount))
+  const expenseTotal = unitsToNumber(expenseTotalUnits)
+  const settlementTotal = unitsToNumber(settlementTotalUnits)
 
   useEffect(() => {
     if (!selectedJournalId || !allocationsQ.data || allocationsLoadedFor.current === selectedJournalId) return
@@ -574,7 +584,7 @@ export default function ExpenseAllocationPage() {
                     <label>Amount ({currency})<input required type="number" min="0.0001" step="0.0001" value={line.amount} onChange={event => updateExpenseLine(index, { amount: event.target.value })} placeholder="0.00" /></label>
                     <label className="expense-description">Line description<input maxLength={250} value={line.description} onChange={event => updateExpenseLine(index, { description: event.target.value })} placeholder="Optional line detail" /></label>
                   </div>
-                  <div className="expense-allocation-heading"><strong>Allocate this expense</strong><span>{money(line.allocations.reduce((sum, row) => sum + amount(row.amount), 0), currency)} of {money(amount(line.amount), currency)}</span></div>
+                  <div className="expense-allocation-heading"><strong>Allocate this expense</strong><span>{money(unitsToNumber(sumUnits(line.allocations.map(row => row.amount))), currency)} of {money(amount(line.amount), currency)}</span></div>
                   {line.allocations.map((allocation, allocationIndex) => (
                     <div className="allocation-editor-row" key={allocationIndex}>
                       <label>Destination<select value={allocation.attribution_scope} onChange={event => updateNewAllocation(index, allocationIndex, { attribution_scope: event.target.value as 'project' | 'overhead', project_id: event.target.value === 'project' ? projects[0]?.id ?? '' : '', cost_centre_id: event.target.value === 'overhead' ? costCentres[0]?.id ?? '' : '' })}><option value="project">Project</option><option value="overhead">Overhead</option></select></label>
@@ -610,7 +620,7 @@ export default function ExpenseAllocationPage() {
             <div className="form-wide expense-totals">
               <div><span>Total expense debit</span><strong>{money(expenseTotal, currency)}</strong></div>
               <div><span>Total payment / payable credit</span><strong>{money(settlementTotal, currency)}</strong></div>
-              <div><span>Difference</span><strong className={sumUnits(form.expense_lines.map(line => line.amount)) === sumUnits(form.settlement_lines.map(line => line.amount)) ? 'balanced' : 'unbalanced'}>{money(Math.abs(expenseTotal - settlementTotal), currency)}</strong></div>
+              <div><span>Difference</span><strong className={sumUnits(form.expense_lines.map(line => line.amount)) === sumUnits(form.settlement_lines.map(line => line.amount)) ? 'balanced' : 'unbalanced'}>{money(unitsToNumber(expenseTotalUnits >= settlementTotalUnits ? expenseTotalUnits - settlementTotalUnits : settlementTotalUnits - expenseTotalUnits), currency)}</strong></div>
             </div>
             {error && <div className="form-alert error form-wide">{error}</div>}
             <div className="form-actions form-wide"><button type="button" className="outline-button" onClick={() => setShowCreate(false)} disabled={busy}>Cancel</button><button className="primary-button" disabled={busy || accounts.filter(account => account.account_type === 'expense').length === 0 || accounts.filter(account => ['asset', 'liability'].includes(account.account_type)).length === 0}>{busy ? 'Creating and posting…' : 'Create and post expense'}</button></div>
@@ -631,11 +641,12 @@ export default function ExpenseAllocationPage() {
             <div className="budget-detail-meta"><span>Reference</span><strong>{selectedJournal.reference || '—'}</strong><span>Source</span><strong>{label(selectedJournal.source_module)}</strong><span>Total journal</span><strong>{money(amount(selectedJournal.total_debit), currency)}</strong></div>
             {selectedExpenseLines.map(line => {
               const rows = allocationDrafts[line.id] ?? []
-              const allocated = round4(rows.reduce((sum, row) => sum + amount(row.amount), 0))
-              const remaining = round4(lineAmount(line) - allocated)
+              const allocatedUnits = sumUnits(rows.map(row => row.amount))
+              const remainingUnits = exactUnits(lineAmountText(line)) - allocatedUnits
+              const remaining = unitsToNumber(remainingUnits)
               return (
                 <section className="draft-expense-line" key={line.id}>
-                  <div className="draft-expense-heading"><div><strong>{accounts.find(account => account.id === line.account_id)?.account_code ?? 'Expense account'} · {accounts.find(account => account.id === line.account_id)?.account_name ?? 'Expense'}</strong><small>{line.description || 'Expense journal line'} · {label(lineSide(line))}</small></div><div><strong>{money(lineAmount(line), currency)}</strong><small className={remaining === 0 ? 'balanced' : 'unbalanced'}>{remaining === 0 ? 'Fully allocated' : money(remaining, currency) + ' remaining'}</small></div></div>
+                  <div className="draft-expense-heading"><div><strong>{accounts.find(account => account.id === line.account_id)?.account_code ?? 'Expense account'} · {accounts.find(account => account.id === line.account_id)?.account_name ?? 'Expense'}</strong><small>{line.description || 'Expense journal line'} · {label(lineSide(line))}</small></div><div><strong>{money(lineAmount(line), currency)}</strong><small className={remainingUnits === 0n ? 'balanced' : 'unbalanced'}>{remainingUnits === 0n ? 'Fully allocated' : money(remaining, currency) + ' remaining'}</small></div></div>
                   {allocationsQ.isLoading ? <p className="helper-text">Loading saved allocations…</p> : rows.map((row, index) => (
                     <div className="allocation-editor-row saved-allocation-row" key={index}>
                       <label>Destination<select value={row.attribution_scope} disabled={!canAllocate} onChange={event => updateSavedAllocation(line.id, index, { attribution_scope: event.target.value as 'project' | 'overhead', project_id: event.target.value === 'project' ? projects[0]?.id ?? '' : '', cost_centre_id: event.target.value === 'overhead' ? costCentres[0]?.id ?? '' : '' })}><option value="project">Project</option><option value="overhead">Overhead</option></select></label>
