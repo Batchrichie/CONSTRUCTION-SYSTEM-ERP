@@ -136,7 +136,6 @@ export default function ProjectsPage() {
     setBusy(true)
     setError('')
     const payload = {
-      project_code: form.project_code.trim(),
       name: form.name.trim(),
       description: form.description.trim() || null,
       project_type: form.project_type,
@@ -192,7 +191,7 @@ export default function ProjectsPage() {
           closeDisabled={busy}
         >
           <form className="data-form" onSubmit={save}>
-            <label>Project code<input required maxLength={40} value={form.project_code} onChange={event => setForm({ ...form, project_code: event.target.value })} placeholder="PRJ-0001" /></label>
+            <label>Project code<input value={editing ? form.project_code : 'Generated automatically on save'} readOnly /></label>
             <label>Project name<input required minLength={2} maxLength={200} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Office complex construction" /></label>
             <label>Project type<select value={form.project_type} onChange={event => setForm({ ...form, project_type: event.target.value as ProjectType })}>{projectTypes.map(type => <option key={type} value={type}>{label(type)}</option>)}</select></label>
             <label>Lifecycle status<select value={form.status} onChange={event => setForm({ ...form, status: event.target.value as ProjectStatus })}>{projectStatuses.map(status => <option key={status} value={status}>{label(status)}</option>)}</select></label>
