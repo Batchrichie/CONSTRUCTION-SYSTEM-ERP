@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(15);
+select extensions.plan(16);
 
 create temporary table _budget_fixture (
   company_id uuid not null,
@@ -71,6 +71,22 @@ select extensions.is(
   (select count(*)::integer from public.project_budgets where budget_version_id=(select budget_id from _budget_fixture)),
   1,
   'Budget lines are saved against the revision'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.save_project_budget_draft(%L::uuid,%L::uuid,NULL,%L,%L::jsonb)',
+    (select company_id from _budget_fixture),
+    (select project_id from _budget_fixture),
+    'Duplicate draft attempt',
+    jsonb_build_array(jsonb_build_object(
+      'cost_code_id',(select cost_code_id from _budget_fixture),
+      'budget_amount',5000
+    ))::text
+  ),
+  '23505',
+  'A draft or submitted budget already exists for this project',
+  'A project cannot have two open budget revisions'
 );
 
 select public.transition_project_budget(
