@@ -28,10 +28,7 @@ const money = (amount: number, currency: string) => new Intl.NumberFormat('en-GH
   style: 'currency', currency: currency || 'GHS', minimumFractionDigits: 2, maximumFractionDigits: 2,
 }).format(Number(amount || 0))
 const blankLine = (): BudgetLine => ({ cost_code_id: '', budget_amount: '', notes: '' })
-const isPositiveBudgetAmount = (value: string | number) => {
-  const amount = String(value).trim()
-  return /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(amount) && Number.isFinite(Number(amount)) && Number(amount) > 0
-}
+const isPositiveBudgetAmount = (value: string | number) => isPositiveAmount(value)
 
 export default function ProjectBudgetsPage() {
   const { client, company, roleCode } = useAuth()
