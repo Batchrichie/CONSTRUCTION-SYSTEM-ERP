@@ -112,9 +112,9 @@ export default function ProjectBudgetsPage() {
     },
   })
 
-  const projects = projectsQ.data ?? []
-  const codes = codesQ.data ?? []
-  const budgets = budgetsQ.data ?? []
+  const projects = useMemo(() => projectsQ.data ?? [], [projectsQ.data])
+  const codes = useMemo(() => codesQ.data ?? [], [codesQ.data])
+  const budgets = useMemo(() => budgetsQ.data ?? [], [budgetsQ.data])
   const filtered = useMemo(() => budgets.filter(item => {
     const project = projects.find(candidate => candidate.id === item.project_id)
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter
