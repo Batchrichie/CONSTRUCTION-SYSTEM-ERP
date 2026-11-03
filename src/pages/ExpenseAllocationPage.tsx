@@ -77,13 +77,13 @@ const today = () => {
   const date = new Date()
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
 }
-const amount = (value: string | number | null | undefined) => Number(value ?? 0)
+const amountForDisplay = (value: string | number | null | undefined) => unitsToNumber(exactUnits(value))
 const label = (value: string) => value.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase())
 const money = (value: number, currency: string) => new Intl.NumberFormat('en-GH', {
   style: 'currency', currency: currency || 'GHS', minimumFractionDigits: 2, maximumFractionDigits: 2,
 }).format(value)
 const lineAmountText = (line: JournalLine) => isPositiveAmount(line.debit) ? String(line.debit) : String(line.credit)
-const lineAmount = (line: JournalLine) => amount(lineAmountText(line))
+const lineAmount = (line: JournalLine) => amountForDisplay(lineAmountText(line))
 const lineSide = (line: JournalLine): 'debit' | 'credit' => isPositiveAmount(line.debit) ? 'debit' : 'credit'
 
 function defaultAllocation(projects: Project[], centres: CostCentre[], side: 'debit' | 'credit' = 'debit'): AllocationDraft {
@@ -565,7 +565,7 @@ export default function ExpenseAllocationPage() {
                     <label>Amount ({currency})<input required type="number" min="0.0001" step="0.0001" value={line.amount} onChange={event => updateExpenseLine(index, { amount: event.target.value })} placeholder="0.00" /></label>
                     <label className="expense-description">Line description<input maxLength={250} value={line.description} onChange={event => updateExpenseLine(index, { description: event.target.value })} placeholder="Optional line detail" /></label>
                   </div>
-                  <div className="expense-allocation-heading"><strong>Allocate this expense</strong><span>{money(unitsToNumber(sumUnits(line.allocations.map(row => row.amount))), currency)} of {money(amount(line.amount), currency)}</span></div>
+                  <div className="expense-allocation-heading"><strong>Allocate this expense</strong><span>{money(unitsToNumber(sumUnits(line.allocations.map(row => row.amount))), currency)} of {money(amountForDisplay(line.amount), currency)}</span></div>
                   {line.allocations.map((allocation, allocationIndex) => (
                     <div className="allocation-editor-row" key={allocationIndex}>
                       <label>Destination<select value={allocation.attribution_scope} onChange={event => updateNewAllocation(index, allocationIndex, { attribution_scope: event.target.value as 'project' | 'overhead', project_id: event.target.value === 'project' ? projects[0]?.id ?? '' : '', cost_centre_id: event.target.value === 'overhead' ? costCentres[0]?.id ?? '' : '' })}><option value="project">Project</option><option value="overhead">Overhead</option></select></label>
