@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { CheckCircle2, ClipboardList, Plus, Receipt, Save, Trash2 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
@@ -122,6 +122,7 @@ export default function ExpenseAllocationPage() {
   const [selectedJournalId, setSelectedJournalId] = useState<string | null>(null)
   const [form, setForm] = useState<ExpenseForm>(() => initialForm([], [], []))
   const [allocationDrafts, setAllocationDrafts] = useState<Record<string, AllocationDraft[]>>({})
+  const allocationsLoadedFor = useRef<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -242,7 +243,7 @@ export default function ExpenseAllocationPage() {
   const settlementTotal = form.settlement_lines.reduce((sum, line) => sum + amount(line.amount), 0)
 
   useEffect(() => {
-    if (!selectedJournalId || !allocationsQ.data) return
+    if (!selectedJournalId || !allocationsQ.data || allocationsLoadedFor.current === selectedJournalId) return
     setAllocationDrafts(current => {
       const next = { ...current }
       selectedExpenseLines.forEach(line => {
@@ -260,6 +261,7 @@ export default function ExpenseAllocationPage() {
       })
       return next
     })
+    allocationsLoadedFor.current = selectedJournalId
   }, [selectedJournalId, allocationsQ.data, selectedExpenseLines])
 
   function refreshDraftData() {
@@ -606,7 +608,7 @@ export default function ExpenseAllocationPage() {
           description={selectedJournal.description + ' · ' + new Date(selectedJournal.journal_date + 'T00:00:00').toLocaleDateString('en-GB')}
           eyebrow="DRAFT EXPENSE ALLOCATION"
           size="large"
-          onClose={() => { setSelectedJournalId(null); setError('') }}
+          onClose={() => { allocationsLoadedFor.current = null; setSelectedJournalId(null); setError('') }}
           closeDisabled={busy}
         >
           <div className="expense-draft-detail">
