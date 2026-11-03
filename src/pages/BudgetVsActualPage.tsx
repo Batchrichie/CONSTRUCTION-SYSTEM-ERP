@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, BarChart3, TrendingDown, TrendingUp } from 'lucide-react'
+import { AlertTriangle, BarChart3, TrendingUp } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
-import { exactUnits, sumUnits, unitsToNumber, unitsToString } from '../lib/decimalAmount'
+import { exactUnits, unitsToNumber } from '../lib/decimalAmount'
 
 type Project = {
   id: string
@@ -40,7 +40,6 @@ const label = (value: string) => value.replaceAll('_', ' ').replace(/\\b\\w/g, c
 const money = (value: number, currency: string) => new Intl.NumberFormat('en-GH', {
   style: 'currency', currency: currency || 'GHS', minimumFractionDigits: 2, maximumFractionDigits: 2,
 }).format(value)
-const dateText = (value: string) => new Date(value + 'T00:00:00').toLocaleDateString('en-GB')
 
 export default function BudgetVsActualPage() {
   const { client, company } = useAuth()
