@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(16);
+select extensions.plan(15);
 
 create temporary table _budget_fixture (
   company_id uuid not null,
