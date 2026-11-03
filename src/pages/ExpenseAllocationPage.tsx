@@ -522,8 +522,8 @@ export default function ExpenseAllocationPage() {
     }
   }
 
-  const loading = accountsQ.isLoading || projectsQ.isLoading || codesQ.isLoading || centresQ.isLoading || journalsQ.isLoading || linesQ.isLoading
-  const queryError = accountsQ.error || projectsQ.error || codesQ.error || centresQ.error || journalsQ.error || linesQ.error
+  const loading = accountsQ.isLoading || projectsQ.isLoading || codesQ.isLoading || centresQ.isLoading || journalsQ.isLoading || linesQ.isLoading || allocationsQ.isLoading
+  const queryError = accountsQ.error || projectsQ.error || codesQ.error || centresQ.error || journalsQ.error || linesQ.error || allocationsQ.error
   const currency = company?.base_currency ?? 'GHS'
 
   if (!canRead) {
