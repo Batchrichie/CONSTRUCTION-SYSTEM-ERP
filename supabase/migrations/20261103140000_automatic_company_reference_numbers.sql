@@ -1,0 +1,129 @@
+-- Generate company-scoped document references in the database.
+-- Counters are transaction-safe and are seeded from existing references to avoid collisions.
+
+create table private.company_reference_sequences (
+  company_id uuid not null references public.companies(id) on delete restrict,
+  sequence_key text not null,
+  next_value bigint not null check (next_value > 0),
+  primary key (company_id, sequence_key)
+);
+
+revoke all on private.company_reference_sequences from public, anon, authenticated;
+
+create or replace function private.next_company_reference(
+  p_company_id uuid,
+  p_sequence_key text,
+  p_prefix text,
+  p_padding integer default 4
+)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_number bigint;
+begin
+  if p_company_id is null or p_sequence_key is null or p_prefix is null
+     or p_padding < 1 or p_padding > 12 then
+    raise exception 'Invalid reference number configuration' using errcode = '22023';
+  end if;
+
+  insert into private.company_reference_sequences(company_id, sequence_key, next_value)
+  values (p_company_id, p_sequence_key, 2)
+  on conflict (company_id, sequence_key)
+  do update set next_value = private.company_reference_sequences.next_value + 1
+  returning next_value - 1 into v_number;
+
+  return p_prefix || '-' || lpad(v_number::text, p_padding, '0');
+end;
+$$;
+
+revoke all on function private.next_company_reference(uuid,text,text,integer) from public, anon, authenticated;
+
+create or replace function private.assign_company_reference()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_field text := tg_argv[0];
+  v_prefix text := tg_argv[1];
+  v_existing text;
+  v_generated text;
+begin
+  v_existing := to_jsonb(new)->>v_field;
+  if nullif(btrim(v_existing), '') is null then
+    v_generated := private.next_company_reference(new.company_id, tg_table_name, v_prefix, 4);
+    new := jsonb_populate_record(new, jsonb_build_object(v_field, v_generated));
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.assign_company_reference() from public, anon, authenticated;
+
+-- Seed each counter above the highest existing generated reference.
+do $$
+declare
+  v_item record;
+begin
+  for v_item in
+    select * from (values
+      ('projects','project_code','PRJ'),
+      ('cost_codes','code','CST'),
+      ('cost_centres','code','CTR'),
+      ('business_parties','party_code','PTY'),
+      ('project_contracts','contract_ref','CON'),
+      ('estimates','estimate_number','EST')
+    ) as refs(table_name, field_name, prefix)
+  loop
+    execute format(
+      'insert into private.company_reference_sequences(company_id, sequence_key, next_value)
+       select company_id, %L, coalesce(max((regexp_match(%I, %L))[1]::bigint), 0) + 1
+       from public.%I
+       where %I ~ %L
+       group by company_id
+       on conflict (company_id, sequence_key)
+       do update set next_value = greatest(
+         private.company_reference_sequences.next_value,
+         excluded.next_value
+       )',
+      v_item.table_name,
+      v_item.field_name,
+      '^' || v_item.prefix || '-([0-9]+)$',
+      v_item.table_name,
+      v_item.field_name,
+      '^' || v_item.prefix || '-([0-9]+)$'
+    );
+  end loop;
+end;
+$$;
+
+create trigger projects_assign_reference
+before insert on public.projects
+for each row execute function private.assign_company_reference('project_code','PRJ');
+
+create trigger cost_codes_assign_reference
+before insert on public.cost_codes
+for each row execute function private.assign_company_reference('code','CST');
+
+create trigger cost_centres_assign_reference
+before insert on public.cost_centres
+for each row execute function private.assign_company_reference('code','CTR');
+
+create trigger business_parties_assign_reference
+before insert on public.business_parties
+for each row execute function private.assign_company_reference('party_code','PTY');
+
+create trigger project_contracts_assign_reference
+before insert on public.project_contracts
+for each row execute function private.assign_company_reference('contract_ref','CON');
+
+create trigger estimates_assign_reference
+before insert on public.estimates
+for each row execute function private.assign_company_reference('estimate_number','EST');
+
+comment on table private.company_reference_sequences is
+  'Atomic company-scoped counters for system-generated project and commercial document references.';
