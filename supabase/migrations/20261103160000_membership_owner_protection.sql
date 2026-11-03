@@ -43,7 +43,8 @@ begin
       raise exception 'Authentication is required to manage company memberships'
         using errcode = '42501';
     end if;
-    return case when tg_op = 'DELETE' then old else new end;
+    if tg_op = 'DELETE' then return old; end if;
+    return new;
   end if;
 
   if tg_op = 'INSERT' then
@@ -76,8 +77,10 @@ begin
     return new;
   end if;
 
-  if old.company_id is distinct from new.company_id
-     or old.user_id is distinct from new.user_id then
+  if tg_op = 'UPDATE' and (
+    old.company_id is distinct from new.company_id
+    or old.user_id is distinct from new.user_id
+  ) then
     raise exception 'A membership cannot be reassigned to another company or user'
       using errcode = '42501';
   end if;
