@@ -2,9 +2,9 @@ export type DecimalInput = string | number | null | undefined
 
 /** Parse a decimal value into 1/10,000 currency units without binary floating-point arithmetic. */
 export function decimalUnits(value: DecimalInput): bigint | null {
-  const match = /^([+-]?)(\d+)(?:\.(\d{0,4}))?$/.exec(String(value ?? '0').trim())
+  const match = /^([+-]?)(?:(\d+)(?:\.(\d{0,4}))?|\.(\d{1,4}))$/.exec(String(value ?? '0').trim())
   if (!match) return null
-  const units = BigInt(match[2]) * 10000n + BigInt((match[3] ?? '').padEnd(4, '0') || '0')
+  const units = BigInt(match[2] ?? '0') * 10000n + BigInt((match[3] ?? match[4] ?? '').padEnd(4, '0') || '0')
   return match[1] === '-' ? -units : units
 }
 
