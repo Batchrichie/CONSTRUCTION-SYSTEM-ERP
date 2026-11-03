@@ -3,6 +3,7 @@ import { CheckCircle2, ClipboardList, Copy, Plus, Search, Send, XCircle } from '
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import Modal from '../components/Modal'
+import { isPositiveAmount, sumUnits, unitsToNumber } from '../lib/decimalAmount'
 
 type BudgetStatus = 'draft' | 'submitted' | 'approved' | 'rejected'
 type Project = { id: string; project_code: string; name: string; status: string; currency_code: string }
@@ -262,8 +263,8 @@ export default function ProjectBudgetsPage() {
   }
 
   const selectedLines = linesQ.data ?? []
-  const budgetTotal = selectedLines.reduce((sum, line) => sum + Number(line.budget_amount || 0), 0)
-  const approvedTotal = selectedLines.reduce((sum, line) => sum + Number(line.approved_amount || 0), 0)
+  const budgetTotal = unitsToNumber(sumUnits(selectedLines.map(line => line.budget_amount)))
+  const approvedTotal = unitsToNumber(sumUnits(selectedLines.map(line => line.approved_amount)))
 
   return (
     <div className="page-content">
