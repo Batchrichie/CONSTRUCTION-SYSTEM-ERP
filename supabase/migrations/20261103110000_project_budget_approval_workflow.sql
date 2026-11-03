@@ -324,7 +324,7 @@ begin
   if p_source_budget_version_id is null then
     select * into v_source
     from public.project_budget_versions
-    where company_id = p_company_id and project_id = p_project_id and status = 'approved'
+    where company_id = p_company_id and project_id = p_project_id and status in ('approved','rejected')
     order by revision_number desc limit 1;
   else
     select * into v_source
@@ -344,7 +344,7 @@ begin
     company_id, project_id, revision_number, status, currency_code, notes, created_by
   ) values (
     p_company_id, p_project_id, v_revision, 'draft', v_project.currency_code,
-    'Revision copied from approved revision ' || v_source.revision_number::text,
+    'Revision copied from prior revision ' || v_source.revision_number::text,
     v_user_id
   ) returning id into v_new_id;
 
@@ -361,7 +361,7 @@ begin
     company_id, budget_version_id, from_status, to_status, note, changed_by
   ) values (
     p_company_id, v_new_id, null, 'draft',
-    'Created from approved revision ' || v_source.revision_number::text, v_user_id
+    'Created from prior revision ' || v_source.revision_number::text, v_user_id
   );
 
   return v_new_id;
