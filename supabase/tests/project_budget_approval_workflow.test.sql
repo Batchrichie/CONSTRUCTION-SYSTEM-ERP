@@ -1,20 +1,32 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(18);
+select extensions.plan(21);
+
+-- The application currently enforces one company per installation. Temporarily
+-- relax that installation constraint inside this rollback-only test transaction
+-- so tenant RLS can be exercised against two company-owned fixtures.
+drop index public.companies_single_workspace_per_database;
 
 create temporary table _budget_fixture (
   company_id uuid not null,
   owner_id uuid not null,
+  other_company_id uuid not null,
+  other_owner_id uuid not null,
   accountant_id uuid not null,
   project_id uuid not null,
   cost_code_id uuid not null,
   budget_id uuid,
-  revision_id uuid
+  revision_id uuid,
+  other_project_id uuid not null,
+  other_cost_code_id uuid not null,
+  other_budget_id uuid
 ) on commit drop;
 
+grant select on _budget_fixture to authenticated;
+
 insert into _budget_fixture
-values (gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),null,null);
+values (gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),null,null,gen_random_uuid(),gen_random_uuid(),null);
 
 insert into auth.users (
   id,aud,role,email,encrypted_password,email_confirmed_at,
@@ -24,14 +36,23 @@ select owner_id,'authenticated','authenticated','budget-owner-'||owner_id::text|
 from _budget_fixture
 union all
 select accountant_id,'authenticated','authenticated','budget-accountant-'||accountant_id::text||'@example.test','',now(),'{}'::jsonb,'{}'::jsonb
+from _budget_fixture
+union all
+select other_owner_id,'authenticated','authenticated','budget-other-owner-'||other_owner_id::text||'@example.test','',now(),'{}'::jsonb,'{}'::jsonb
 from _budget_fixture;
 
 insert into public.companies (id,legal_name,display_name,base_currency,country_code,created_by)
 select company_id,'Budget Workflow Test Company','Budget Test','GHS','GH',owner_id
+from _budget_fixture
+union all
+select other_company_id,'Other Budget Test Company','Other Budget Test','GHS','GH',other_owner_id
 from _budget_fixture;
 
 insert into public.company_memberships (company_id,user_id,role_id,status,joined_at)
 select f.company_id,f.owner_id,r.id,'active',now()
+from _budget_fixture f cross join public.roles r where r.code='owner'
+union all
+select f.other_company_id,f.other_owner_id,r.id,'active',now()
 from _budget_fixture f cross join public.roles r where r.code='owner';
 
 insert into public.company_memberships (company_id,user_id,role_id,status,joined_at)
@@ -40,10 +61,16 @@ from _budget_fixture f cross join public.roles r where r.code='accountant';
 
 insert into public.projects (id,company_id,project_code,name,currency_code,created_by)
 select project_id,company_id,'BUDGET-001','Budget Workflow Project','GHS',owner_id
+from _budget_fixture
+union all
+select other_project_id,other_company_id,'OTHER-BUDGET-001','Other Tenant Project','GHS',other_owner_id
 from _budget_fixture;
 
 insert into public.cost_codes (id,company_id,code,name,category)
 select cost_code_id,company_id,'MAT-001','Construction Materials','materials'
+from _budget_fixture
+union all
+select other_cost_code_id,other_company_id,'OTHER-MAT-001','Other Tenant Materials','materials'
 from _budget_fixture;
 
 select set_config('request.jwt.claim.sub',(select accountant_id::text from _budget_fixture),true);
@@ -66,6 +93,48 @@ select extensions.is(
   'draft',
   'Saving a budget creates a draft revision'
 );
+
+select set_config('request.jwt.claim.sub',(select other_owner_id::text from _budget_fixture),true);
+
+update _budget_fixture f
+set other_budget_id = public.save_project_budget_draft(
+  f.other_company_id, f.other_project_id, null, 'Other tenant budget',
+  jsonb_build_array(jsonb_build_object(
+    'cost_code_id',f.other_cost_code_id,
+    'budget_amount','98765.4321',
+    'notes','Other tenant allowance'
+  ))
+);
+
+select set_config('request.jwt.claim.sub',(select owner_id::text from _budget_fixture),true);
+set local role authenticated;
+
+select extensions.is(
+  (select count(*)::integer from public.project_budget_versions
+   where company_id=(select other_company_id from _budget_fixture)),
+  0,
+  'A company owner cannot read another company budget revisions through RLS'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.project_budget_history
+   where company_id=(select other_company_id from _budget_fixture)),
+  0,
+  'A company owner cannot read another company budget history through RLS'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.transition_project_budget(%L::uuid,%L::uuid,%L,%L)',
+    (select other_company_id from _budget_fixture),
+    (select other_budget_id from _budget_fixture),
+    'submitted', null
+  ),
+  '42501',
+  'You do not have permission to submit project budgets',
+  'A company owner cannot transition another company budget'
+);
+reset role;
 
 select extensions.is(
   (select count(*)::integer from public.project_budgets where budget_version_id=(select budget_id from _budget_fixture)),
@@ -115,6 +184,7 @@ select extensions.is(
   'A draft budget can be submitted'
 );
 
+select set_config('request.jwt.claim.sub',(select accountant_id::text from _budget_fixture),true);
 select extensions.throws_ok(
   format(
     'select public.transition_project_budget(%L::uuid,%L::uuid,%L,%L)',

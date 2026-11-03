@@ -105,12 +105,11 @@ export default function ProjectCostSetupPage() {
     try {
       if (tab === 'codes') {
         const payload = {
-          code: codeForm.code.trim().toUpperCase(),
           name: codeForm.name.trim(),
           category: codeForm.category,
           parent_cost_code_id: codeForm.parent_cost_code_id || null,
         }
-        if (!payload.code || !payload.name) throw new Error('Enter both a cost code and its name.')
+        if (!payload.name) throw new Error('Enter a cost code name.')
         if (editingId) {
           const { data, error } = await client.from('cost_codes').update(payload).eq('company_id', company.id).eq('id', editingId).select('id').maybeSingle()
           if (error) throw error
@@ -122,12 +121,11 @@ export default function ProjectCostSetupPage() {
         await qc.invalidateQueries({ queryKey: ['project-cost-codes', company.id] })
       } else {
         const payload = {
-          code: centreForm.code.trim().toUpperCase(),
           name: centreForm.name.trim(),
           centre_type: centreForm.centre_type,
           branch_id: centreForm.branch_id || null,
         }
-        if (!payload.code || !payload.name) throw new Error('Enter both a cost centre code and its name.')
+        if (!payload.name) throw new Error('Enter a cost centre name.')
         if (editingId) {
           const { data, error } = await client.from('cost_centres').update(payload).eq('company_id', company.id).eq('id', editingId).select('id').maybeSingle()
           if (error) throw error
@@ -173,7 +171,7 @@ export default function ProjectCostSetupPage() {
           closeDisabled={busy}
         >
           <form className="data-form" onSubmit={save}>
-            <label>Code<input required maxLength={40} value={tab === 'codes' ? codeForm.code : centreForm.code} onChange={event => tab === 'codes' ? setCodeForm({ ...codeForm, code: event.target.value }) : setCentreForm({ ...centreForm, code: event.target.value })} placeholder={tab === 'codes' ? 'MAT-001' : 'OH-001'} /></label>
+            <label>Code<input value={editingId ? (tab === 'codes' ? codeForm.code : centreForm.code) : 'Generated automatically on save'} readOnly /></label>
             <label>Name<input required maxLength={160} value={tab === 'codes' ? codeForm.name : centreForm.name} onChange={event => tab === 'codes' ? setCodeForm({ ...codeForm, name: event.target.value }) : setCentreForm({ ...centreForm, name: event.target.value })} placeholder={tab === 'codes' ? 'Construction materials' : 'Head office overhead'} /></label>
             {tab === 'codes' ? (
               <>

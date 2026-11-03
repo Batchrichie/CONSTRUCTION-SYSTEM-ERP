@@ -19,7 +19,7 @@ type Budget = {
   rejection_reason: string | null
   created_at: string
 }
-type BudgetLine = { id?: string; cost_code_id: string; budget_amount: number | string; approved_amount?: number; notes: string | null }
+type BudgetLine = { id?: string; cost_code_id: string; budget_amount: number | string; approved_amount?: number | string; notes: string | null }
 type History = { id: string; from_status: string | null; to_status: string; note: string | null; changed_at: string }
 
 const label = (value: string) => value.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase())
@@ -27,6 +27,10 @@ const money = (amount: number, currency: string) => new Intl.NumberFormat('en-GH
   style: 'currency', currency: currency || 'GHS', minimumFractionDigits: 2, maximumFractionDigits: 2,
 }).format(Number(amount || 0))
 const blankLine = (): BudgetLine => ({ cost_code_id: '', budget_amount: '', notes: '' })
+const isPositiveBudgetAmount = (value: string | number) => {
+  const amount = String(value).trim()
+  return /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(amount) && Number.isFinite(Number(amount)) && Number(amount) > 0
+}
 
 export default function ProjectBudgetsPage() {
   const { client, company, roleCode } = useAuth()
@@ -183,7 +187,7 @@ export default function ProjectBudgetsPage() {
     event.preventDefault()
     if (!client || !company) return
     if (!form.project_id) { setError('Select a project first.'); return }
-    if (form.lines.length === 0 || form.lines.some(line => !line.cost_code_id || Number(line.budget_amount) <= 0)) {
+    if (form.lines.length === 0 || form.lines.some(line => !line.cost_code_id || !isPositiveBudgetAmount(line.budget_amount))) {
       setError('Every budget line must have a cost code and a positive amount.')
       return
     }
@@ -197,7 +201,7 @@ export default function ProjectBudgetsPage() {
         p_notes: form.notes.trim() || null,
         p_lines: form.lines.map(line => ({
           cost_code_id: line.cost_code_id,
-          budget_amount: Number(line.budget_amount),
+          budget_amount: String(line.budget_amount).trim(),
           notes: line.notes?.trim() || null,
         })),
       })
