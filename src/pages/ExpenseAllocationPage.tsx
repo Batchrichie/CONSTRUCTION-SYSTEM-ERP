@@ -3,6 +3,7 @@ import { CheckCircle2, ClipboardList, Plus, Receipt, Save, Trash2 } from 'lucide
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import Modal from '../components/Modal'
+import { exactUnits, isPositiveAmount, sumUnits, unitsToNumber } from '../lib/decimalAmount'
 
 type Account = {
   id: string
@@ -77,26 +78,6 @@ const today = () => {
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
 }
 const amount = (value: string | number | null | undefined) => Number(value ?? 0)
-const decimalUnits = (value: string | number | null | undefined): bigint | null => {
-  const match = /^([+-]?)(\d+)(?:\.(\d{0,4}))?$/.exec(String(value ?? '0').trim())
-  if (!match) return null
-  const units = BigInt(match[2]) * 10000n + BigInt((match[3] ?? '').padEnd(4, '0') || '0')
-  return match[1] === '-' ? -units : units
-}
-const exactUnits = (value: string | number | null | undefined) => decimalUnits(value) ?? 0n
-const sumUnits = (values: Array<string | number | null | undefined>) => values.reduce((sum, value) => sum + exactUnits(value), 0n)
-const unitsToString = (units: bigint) => {
-  const negative = units < 0n
-  const absolute = negative ? -units : units
-  const whole = absolute / 10000n
-  const fraction = (absolute % 10000n).toString().padStart(4, '0').replace(/0+$/, '')
-  return (negative ? '-' : '') + whole.toString() + (fraction ? '.' + fraction : '')
-}
-const unitsToNumber = (units: bigint) => Number(unitsToString(units))
-const isPositiveAmount = (value: string | number | null | undefined) => {
-  const units = decimalUnits(value)
-  return units !== null && units > 0n
-}
 const label = (value: string) => value.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase())
 const money = (value: number, currency: string) => new Intl.NumberFormat('en-GH', {
   style: 'currency', currency: currency || 'GHS', minimumFractionDigits: 2, maximumFractionDigits: 2,
