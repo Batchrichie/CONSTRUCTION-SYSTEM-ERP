@@ -88,6 +88,11 @@ with inserted as (
 update _estimate_precision_fixture
 set estimate_id = (select id from inserted);
 
+select extensions.ok(
+  (select estimate_id is not null from _estimate_precision_fixture),
+  'A valid estimate is saved before testing BOQ precision constraints'
+);
+
 select extensions.throws_ok(
   format(
     'insert into public.estimate_items(company_id,estimate_id,item_number,description,unit,quantity,unit_rate) values (%L::uuid,%L::uuid,%L,%L,%L,%L::numeric,%L::numeric)',
