@@ -1,20 +1,25 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(18);
+select extensions.plan(21);
 
 create temporary table _budget_fixture (
   company_id uuid not null,
   owner_id uuid not null,
+  other_company_id uuid not null,
+  other_owner_id uuid not null,
   accountant_id uuid not null,
   project_id uuid not null,
   cost_code_id uuid not null,
   budget_id uuid,
-  revision_id uuid
+  revision_id uuid,
+  other_project_id uuid not null,
+  other_cost_code_id uuid not null,
+  other_budget_id uuid
 ) on commit drop;
 
 insert into _budget_fixture
-values (gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),null,null);
+values (gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),null,null,gen_random_uuid(),gen_random_uuid(),null);
 
 insert into auth.users (
   id,aud,role,email,encrypted_password,email_confirmed_at,
@@ -80,6 +85,46 @@ select extensions.is(
   (select status from public.project_budget_versions where id=(select budget_id from _budget_fixture)),
   'draft',
   'Saving a budget creates a draft revision'
+);
+
+select set_config('request.jwt.claim.sub',(select other_owner_id::text from _budget_fixture),true);
+
+update _budget_fixture f
+set other_budget_id = public.save_project_budget_draft(
+  f.other_company_id, f.other_project_id, null, 'Other tenant budget',
+  jsonb_build_array(jsonb_build_object(
+    'cost_code_id',f.other_cost_code_id,
+    'budget_amount','98765.4321',
+    'notes','Other tenant allowance'
+  ))
+);
+
+select set_config('request.jwt.claim.sub',(select owner_id::text from _budget_fixture),true);
+
+select extensions.is(
+  (select count(*)::integer from public.project_budget_versions
+   where company_id=(select other_company_id from _budget_fixture)),
+  0,
+  'A company owner cannot read another company budget revisions through RLS'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.project_budget_history
+   where company_id=(select other_company_id from _budget_fixture)),
+  0,
+  'A company owner cannot read another company budget history through RLS'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.transition_project_budget(%L::uuid,%L::uuid,%L,%L)',
+    (select other_company_id from _budget_fixture),
+    (select other_budget_id from _budget_fixture),
+    'submitted', null
+  ),
+  '42501',
+  'You do not have permission to submit project budgets',
+  'A company owner cannot transition another company budget'
 );
 
 -- Create another tenant's budget and history, then test row-level isolation.
