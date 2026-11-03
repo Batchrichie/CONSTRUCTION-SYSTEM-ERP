@@ -15,7 +15,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
 import Modal from "../components/Modal";
-import { sumUnits, unitsToNumber } from "../lib/decimalAmount";
+import { decimalUnits, sumUnits, unitsToNumber } from "../lib/decimalAmount";
 
 type Customer = { id: string; legal_name: string; trading_name: string | null };
 type Project = {
@@ -332,6 +332,12 @@ export default function EstimatesPage() {
       setError("Choose the BOQ section for this item.");
       return;
     }
+    const quantityUnits = decimalUnits(item.quantity);
+    const unitRateUnits = decimalUnits(item.unit_rate);
+    if (quantityUnits === null || quantityUnits <= 0n || unitRateUnits === null || unitRateUnits < 0n) {
+      setError("Quantity must be positive and unit rate must be zero or greater, with no more than four decimal places.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -344,8 +350,8 @@ export default function EstimatesPage() {
           item_number: item.item_number.trim(),
           description: item.description.trim(),
           unit: item.unit.trim(),
-          quantity: Number(item.quantity),
-          unit_rate: Number(item.unit_rate),
+          quantity: item.quantity,
+          unit_rate: item.unit_rate,
           item_type: item.item_type,
           sort_order: items.length,
         });
@@ -361,6 +367,14 @@ export default function EstimatesPage() {
   }
   async function saveItem(id: string) {
     if (!client || !company || !selected) return;
+    const quantity = String(editValues.quantity ?? items.find((row) => row.id === id)?.quantity ?? "");
+    const unitRate = String(editValues.unit_rate ?? items.find((row) => row.id === id)?.unit_rate ?? "");
+    const quantityUnits = decimalUnits(quantity);
+    const unitRateUnits = decimalUnits(unitRate);
+    if (quantityUnits === null || quantityUnits <= 0n || unitRateUnits === null || unitRateUnits < 0n) {
+      setError("Quantity must be positive and unit rate must be zero or greater, with no more than four decimal places.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -371,8 +385,8 @@ export default function EstimatesPage() {
           item_number: editValues.item_number,
           description: editValues.description,
           unit: editValues.unit,
-          quantity: Number(editValues.quantity),
-          unit_rate: Number(editValues.unit_rate),
+          quantity,
+          unit_rate: unitRate,
           item_type: editValues.item_type,
         })
         .eq("id", id)
@@ -412,14 +426,25 @@ export default function EstimatesPage() {
   }
   async function saveAdjustments() {
     if (!client || !company || !selected) return;
+    const discountUnits = decimalUnits(adjustments.discount_amount);
+    const taxUnits = decimalUnits(adjustments.tax_amount);
+    const subtotalUnits = sumUnits(items.map((row) => row.line_total));
+    if (discountUnits === null || discountUnits < 0n || taxUnits === null || taxUnits < 0n) {
+      setError("Discount and tax must be non-negative amounts with no more than four decimal places.");
+      return;
+    }
+    if (discountUnits > subtotalUnits) {
+      setError("Discount cannot exceed the BOQ subtotal.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       const { error } = await client
         .from("estimates")
         .update({
-          discount_amount: Number(adjustments.discount_amount),
-          tax_amount: Number(adjustments.tax_amount),
+          discount_amount: adjustments.discount_amount,
+          tax_amount: adjustments.tax_amount,
         })
         .eq("id", selected.id)
         .eq("company_id", company.id);
