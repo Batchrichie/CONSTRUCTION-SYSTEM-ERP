@@ -23,6 +23,8 @@ create temporary table _budget_fixture (
   other_budget_id uuid
 ) on commit drop;
 
+grant select on _budget_fixture to authenticated;
+
 insert into _budget_fixture
 values (gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),null,null,gen_random_uuid(),gen_random_uuid(),null);
 
@@ -105,6 +107,7 @@ set other_budget_id = public.save_project_budget_draft(
 );
 
 select set_config('request.jwt.claim.sub',(select owner_id::text from _budget_fixture),true);
+set local role authenticated;
 
 select extensions.is(
   (select count(*)::integer from public.project_budget_versions
@@ -131,6 +134,7 @@ select extensions.throws_ok(
   'You do not have permission to submit project budgets',
   'A company owner cannot transition another company budget'
 );
+reset role;
 
 select extensions.is(
   (select count(*)::integer from public.project_budgets where budget_version_id=(select budget_id from _budget_fixture)),
@@ -180,6 +184,7 @@ select extensions.is(
   'A draft budget can be submitted'
 );
 
+select set_config('request.jwt.claim.sub',(select accountant_id::text from _budget_fixture),true);
 select extensions.throws_ok(
   format(
     'select public.transition_project_budget(%L::uuid,%L::uuid,%L,%L)',
