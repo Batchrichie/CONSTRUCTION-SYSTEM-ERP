@@ -83,7 +83,6 @@ export default function ProjectBudgetsPage() {
     },
   })
   const selected = budgetsQ.data?.find(item => item.id === selectedId) ?? null
-  const selectedProject = projectsQ.data?.find(item => item.id === selected?.project_id)
   const linesQ = useQuery({
     queryKey: ['project-budget-lines', company?.id, selectedId],
     enabled: Boolean(client && company && selectedId),
@@ -313,13 +312,14 @@ export default function ProjectBudgetsPage() {
         </Modal>
       )}
 
-      {selected && !showEditor && (
+      {selected && !showEditor && !showReject && (
         <Modal
           title={projects.find(project => project.id === selected.project_id)?.name ?? 'Project budget'}
           description={'Revision ' + selected.revision_number + ' · ' + label(selected.status)}
           eyebrow="PROJECT BUDGET DETAILS"
           size="large"
           onClose={() => setSelectedId(null)}
+          closeDisabled={busy}
         >
           <div className="budget-detail">
             <div className="budget-detail-meta"><span>Project code</span><strong>{projects.find(project => project.id === selected.project_id)?.project_code ?? '—'}</strong><span>Currency</span><strong>{selected.currency_code}</strong><span>Created</span><strong>{new Date(selected.created_at).toLocaleDateString('en-GB')}</strong></div>
@@ -340,7 +340,7 @@ export default function ProjectBudgetsPage() {
               {selected.status === 'draft' && canManage && <button className="primary-button" onClick={() => void transition(selected, 'submitted')} disabled={busy || selectedLines.length === 0}><Send size={13} /> Submit for approval</button>}
               {selected.status === 'submitted' && canApprove && <button className="primary-button" onClick={() => void transition(selected, 'approved')} disabled={busy}><CheckCircle2 size={13} /> Approve budget</button>}
               {selected.status === 'submitted' && canApprove && <button className="outline-button" onClick={() => { setShowReject(true); setRejectNote('') }} disabled={busy}><XCircle size={13} /> Reject</button>}
-              {selected.status === 'approved' && canManage && <button className="outline-button" onClick={() => void createRevision(selected)} disabled={busy}><Copy size={13} /> Create new revision</button>}
+              {(selected.status === 'approved' || selected.status === 'rejected') && canManage && <button className="outline-button" onClick={() => void createRevision(selected)} disabled={busy}><Copy size={13} /> Create new revision</button>}
             </div>
           </div>
         </Modal>
