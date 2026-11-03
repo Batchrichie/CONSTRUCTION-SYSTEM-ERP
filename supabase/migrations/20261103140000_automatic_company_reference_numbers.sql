@@ -35,7 +35,7 @@ begin
   do update set next_value = private.company_reference_sequences.next_value + 1
   returning next_value - 1 into v_number;
 
-  return p_prefix || '-' || lpad(v_number::text, p_padding, '0');
+  return p_prefix || '-' || lpad(v_number::text, greatest(p_padding, length(v_number::text)), '0');
 end;
 $$;
 
