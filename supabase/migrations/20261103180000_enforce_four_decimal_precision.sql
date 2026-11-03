@@ -16,6 +16,7 @@ set search_path = ''
 as $$
 declare
   v_line jsonb;
+  v_line_number integer := 0;
 begin
   if p_lines is null or jsonb_typeof(p_lines) is distinct from 'array' then
     raise exception 'Budget lines must be supplied as a JSON array' using errcode = '22023';
@@ -23,10 +24,11 @@ begin
 
   for v_line in select value from jsonb_array_elements(p_lines)
   loop
+    v_line_number := v_line_number + 1;
     if nullif(v_line->>'budget_amount', '') is null
        or ((v_line->>'budget_amount') !~ '^[+]?[0-9]+([.][0-9]{1,4})?$'
            and (v_line->>'budget_amount') !~ '^[+]?([.][0-9]{1,4})$') then
-      raise exception 'Budget amounts must not exceed 4 decimal places'
+      raise exception 'Budget amounts must not exceed 4 decimal places (line %)', v_line_number
         using errcode = '22023';
     end if;
   end loop;
