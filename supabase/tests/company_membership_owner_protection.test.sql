@@ -13,6 +13,8 @@ create temporary table _membership_fixture (
 insert into _membership_fixture
 values (gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid());
 
+grant select, update on _membership_fixture to authenticated;
+
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data
@@ -39,6 +41,7 @@ select set_config(
   (select owner_id::text from _membership_fixture),
   true
 );
+set local role authenticated;
 
 update _membership_fixture
 set company_id = public.create_company_for_current_user(
@@ -72,7 +75,6 @@ select set_config(
   (select admin_id::text from _membership_fixture),
   true
 );
-set local role authenticated;
 
 select extensions.throws_ok(
   format(
