@@ -70,6 +70,6 @@ Build one maintainable product for construction contractors, architectural and e
 - CI runs TypeScript/production build, Vitest tests and ESLint.
 - Phase 7 is the verification and hardening phase. Authenticated end-to-end coverage, accounting/project-cost control tests, operational sample workflows and production readiness remain outstanding.
 - The development database currently contains one company membership and no fiscal years, journals, projects, parties or estimates. Do not treat the empty operational tables as tested workflows.
-- Supabase Auth leaked-password protection is currently reported disabled by the security advisor and must be enabled in the project Auth settings before production use.
+- Supabase Auth leaked-password protection is currently reported disabled by the security advisor and must be enabled in the project Auth settings before production use. Follow the dashboard-only release gate in [`docs/security/auth-hardening.md`](docs/security/auth-hardening.md).
 
 See `docs/phase-7/verification-plan.md` for the staged acceptance plan.
