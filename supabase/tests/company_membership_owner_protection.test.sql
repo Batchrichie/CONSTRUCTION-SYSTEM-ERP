@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(7);
+select extensions.plan(8);
 
 create temporary table _membership_fixture (
   company_id uuid not null,
@@ -166,5 +166,35 @@ select extensions.is(
   'The former owner can change roles after a successor becomes active'
 );
 
+-- A trusted service-role operation may manage memberships, but it must still
+-- not remove the last active owner.
+reset role;
+reset request.jwt.claim.sub;
+select set_config('request.jwt.claim.role', 'service_role', true);
+set local role service_role;
+
+select extensions.throws_ok(
+  format(
+    'delete from public.company_memberships where company_id=%L::uuid and user_id=%L::uuid',
+    (select company_id from _membership_fixture),
+    (select successor_id from _membership_fixture)
+  ),
+  '23514',
+  'The last active company owner cannot be removed or deactivated',
+  'The last-owner guard also protects against service-role deletion'
+);
+
+select extensions.is(
+  (select count(*)::integer
+   from public.company_memberships m
+   join public.roles r on r.id = m.role_id
+   where m.company_id = (select company_id from _membership_fixture)
+     and m.status = 'active'
+     and r.code = 'owner'),
+  1,
+  'A service-role deletion cannot leave the company without an active owner'
+);
+
+reset role;
 select * from extensions.finish();
 rollback;
