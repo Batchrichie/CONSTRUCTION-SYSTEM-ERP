@@ -10,6 +10,11 @@ describe('decimalAmount', () => {
     expect(unitsToString(sumUnits(['12500.1250', '0.0001']))).toBe('12500.1251')
   })
 
+  it('accepts leading-decimal input without losing precision', () => {
+    expect(decimalUnits('.5')).toBe(5000n)
+    expect(decimalUnits('.0001')).toBe(1n)
+  })
+
   it('detects a one ten-thousandth over-allocation', () => {
     expect(exactUnits('10.0001') > exactUnits('10.0000')).toBe(true)
   })
