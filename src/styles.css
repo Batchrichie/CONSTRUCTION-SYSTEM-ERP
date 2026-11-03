@@ -135,3 +135,23 @@ h1{font:700 28px Manrope,sans-serif;letter-spacing:-.8px;margin-bottom:6px;color
 @keyframes modal-rise-in{from{opacity:0;transform:translateY(9px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:700px){.modal-backdrop{padding:10px;align-items:flex-end}.modal-panel,.modal-panel.modal-large{width:100%;max-height:94dvh;border-radius:16px 16px 10px 10px}.modal-header{padding:19px 18px 15px}.modal-body{padding:18px}.modal-footer{padding:12px 18px}.modal-body .data-form{grid-template-columns:1fr}.modal-body .form-wide{grid-column:auto}.modal-body .checkbox-row.form-wide{grid-column:auto}.modal-body .boq-form{grid-template-columns:1fr 1fr}.modal-body .boq-form .form-wide{grid-column:1/-1}}
 @media(prefers-reduced-motion:reduce){.modal-backdrop,.modal-panel{animation:none}}
+
+
+/* Project budget workflow */
+.budget-line-editor{display:grid;grid-template-columns:minmax(180px,1.15fr) minmax(150px,.8fr) minmax(150px,1fr) auto;gap:10px;align-items:end;padding:12px 0;border-bottom:1px solid #edf0f3}
+.budget-line-editor label{display:flex;flex-direction:column;gap:6px;font-size:10px;font-weight:600;color:#526176}
+.budget-line-editor input,.budget-line-editor select{width:100%;min-width:0;border:1px solid #dfe5eb;border-radius:5px;padding:9px 10px;background:#fff;color:#263449;font:11px 'DM Sans',sans-serif}
+.budget-line-editor .text-button{margin-bottom:8px}
+.budget-detail{display:flex;flex-direction:column;gap:16px}
+.budget-detail-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 15px;padding:13px;background:#f7f8fa;border-radius:7px}
+.budget-detail-meta span{font-size:9px;color:#8994a4}
+.budget-detail-meta strong{font-size:11px;color:#27364b}
+.budget-notes{font-size:11px;color:#647286;line-height:1.6;margin:0}
+.budget-history{border-top:1px solid #e9edf1;padding-top:13px;display:flex;flex-direction:column;gap:9px}
+.budget-history>strong{font:700 12px Manrope,sans-serif;color:#29374b}
+.budget-history>div{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.budget-history span{font-size:10px;font-weight:600;color:#40516a}
+.budget-history small{font-size:9px;color:#8c97a6;text-align:right}
+.data-table tfoot th{border-top:1px solid #dfe5eb;padding:12px 10px;font-size:10px;color:#334258}
+@media(max-width:850px){.budget-line-editor{grid-template-columns:1fr 1fr}.budget-line-note{grid-column:1/-1}.budget-detail-meta{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.budget-line-editor{grid-template-columns:1fr}.budget-line-note{grid-column:auto}.budget-detail-meta{grid-template-columns:1fr 1fr}.budget-history>div{align-items:flex-start;flex-direction:column}.budget-history small{text-align:left}}
