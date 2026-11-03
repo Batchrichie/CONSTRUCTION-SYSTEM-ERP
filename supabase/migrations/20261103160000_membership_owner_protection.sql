@@ -31,7 +31,11 @@ set search_path = ''
 as $$
 declare
   v_actor_id uuid := (select auth.uid());
-  v_request_role text := current_setting('request.jwt.claim.role', true);
+  v_request_role text := coalesce(
+    current_setting('request.jwt.claim.role', true),
+    (select auth.jwt()->>'role')
+  );
+  v_is_service_role boolean := coalesce(v_request_role = 'service_role', false);
   v_old_role text;
   v_new_role text;
   v_active_other_owners integer;
@@ -43,8 +47,10 @@ begin
       raise exception 'Authentication is required to manage company memberships'
         using errcode = '42501';
     end if;
-    if tg_op = 'DELETE' then return old; end if;
-    return new;
+    if not v_is_service_role then
+      if tg_op = 'DELETE' then return old; end if;
+      return new;
+    end if;
   end if;
 
   if tg_op = 'INSERT' then
@@ -57,6 +63,7 @@ begin
     end if;
 
     if v_new_role in ('owner', 'admin')
+       and not v_is_service_role
        and not private.is_company_owner(new.company_id) then
       -- The first owner is created by the controlled company-onboarding
       -- function before any membership exists.
@@ -103,6 +110,7 @@ begin
     where r.id = new.role_id;
 
     if (v_old_role in ('owner', 'admin') or v_new_role in ('owner', 'admin'))
+       and not v_is_service_role
        and not private.is_company_owner(old.company_id) then
       raise exception 'Only a company owner can grant or change owner or administrator roles'
         using errcode = '42501';
@@ -129,6 +137,7 @@ begin
   end if;
 
   if v_old_role in ('owner', 'admin')
+     and not v_is_service_role
      and not private.is_company_owner(old.company_id) then
     raise exception 'Only a company owner can remove an owner or administrator'
       using errcode = '42501';
