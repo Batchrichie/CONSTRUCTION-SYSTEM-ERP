@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(13);
+select extensions.plan(14);
 
 -- Test-only fixture. Every row is rolled back at the end of this test.
 create temporary table _project_cost_fixture (
@@ -170,6 +170,24 @@ select extensions.throws_ok(
   '23514',
   'Every debit and credit on an expense account must be fully allocated to a project or overhead cost centre',
   'An expense journal cannot post before its expense amount is fully allocated'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.replace_journal_line_cost_allocations(%L::uuid,%L::uuid,%L::jsonb)',
+    (select company_id from _project_cost_fixture),
+    (select expense_line_id from _project_cost_fixture),
+    jsonb_build_array(jsonb_build_object(
+      'attribution_scope', 'project',
+      'project_id', (select project_one_id from _project_cost_fixture),
+      'cost_code_id', (select cost_code_id from _project_cost_fixture),
+      'allocation_side', 'debit',
+      'amount', '1.00001'
+    ))::text
+  ),
+  '22023',
+  'Allocation amounts must not exceed 4 decimal places',
+  'Project cost allocations reject more than four decimal places without rounding'
 );
 
 select public.replace_journal_line_cost_allocations(
