@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(8);
+select extensions.plan(13);
 
 -- Test-only fixture. Every row is rolled back at the end of this test.
 create temporary table _project_cost_fixture (
@@ -17,7 +17,8 @@ create temporary table _project_cost_fixture (
   cash_account_id uuid,
   journal_id uuid,
   expense_line_id uuid,
-  cash_line_id uuid
+  cash_line_id uuid,
+  budget_version_id uuid
 ) on commit drop;
 
 insert into _project_cost_fixture (
@@ -218,6 +219,81 @@ select extensions.is(
    where company_id = (select company_id from _project_cost_fixture)),
   100::numeric,
   'The project cost ledger reconciles to the full expense debit'
+);
+
+-- Complete the authenticated project-cost workflow with an approved budget
+-- and compare the approved allowance against the posted project actual.
+update _project_cost_fixture f
+set budget_version_id = public.save_project_budget_draft(
+  f.company_id,
+  f.project_one_id,
+  null,
+  'Approved project baseline',
+  jsonb_build_array(jsonb_build_object(
+    'cost_code_id', f.cost_code_id,
+    'budget_amount', '60.0000',
+    'notes', 'Project one materials baseline'
+  ))
+);
+
+select extensions.is(
+  (select status from public.project_budget_versions
+   where id = (select budget_version_id from _project_cost_fixture)),
+  'draft',
+  'The project budget is created as a draft'
+);
+
+select public.transition_project_budget(
+  (select company_id from _project_cost_fixture),
+  (select budget_version_id from _project_cost_fixture),
+  'submitted',
+  null
+);
+
+select extensions.is(
+  (select status from public.project_budget_versions
+   where id = (select budget_version_id from _project_cost_fixture)),
+  'submitted',
+  'The project budget can be submitted for approval'
+);
+
+select public.transition_project_budget(
+  (select company_id from _project_cost_fixture),
+  (select budget_version_id from _project_cost_fixture),
+  'approved',
+  null
+);
+
+select extensions.is(
+  (select status from public.project_budget_versions
+   where id = (select budget_version_id from _project_cost_fixture)),
+  'approved',
+  'The project budget can be approved by an owner'
+);
+
+select extensions.is(
+  (select approved_amount
+   from public.project_budgets
+   where budget_version_id = (select budget_version_id from _project_cost_fixture)),
+  60::numeric,
+  'Approval releases the full approved budget amount'
+);
+
+select extensions.is(
+  (
+    select sum(b.approved_amount)
+    from public.project_budgets b
+    where b.company_id = (select company_id from _project_cost_fixture)
+      and b.project_id = (select project_one_id from _project_cost_fixture)
+  ) - (
+    select sum(l.signed_cost)
+    from public.project_cost_ledger l
+    where l.company_id = (select company_id from _project_cost_fixture)
+      and l.project_id = (select project_one_id from _project_cost_fixture)
+      and l.cost_code_id = (select cost_code_id from _project_cost_fixture)
+  ),
+  0::numeric,
+  'The approved project budget reconciles to posted project actuals'
 );
 
 select public.reverse_journal_entry(
