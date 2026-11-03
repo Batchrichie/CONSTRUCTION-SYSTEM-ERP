@@ -198,11 +198,11 @@ export default function ExpenseAllocationPage() {
     },
   })
 
-  const accounts = accountsQ.data ?? []
-  const projects = projectsQ.data ?? []
-  const costCodes = codesQ.data ?? []
-  const costCentres = centresQ.data ?? []
-  const journals = journalsQ.data ?? []
+  const accounts = useMemo(() => accountsQ.data ?? [], [accountsQ.data])
+  const projects = useMemo(() => projectsQ.data ?? [], [projectsQ.data])
+  const costCodes = useMemo(() => codesQ.data ?? [], [codesQ.data])
+  const costCentres = useMemo(() => centresQ.data ?? [], [centresQ.data])
+  const journals = useMemo(() => journalsQ.data ?? [], [journalsQ.data])
   const journalIds = useMemo(() => journals.map(journal => journal.id), [journals])
   const linesQ = useQuery({
     queryKey: ['expense-allocation-draft-lines', company?.id, journalIds],
@@ -217,7 +217,7 @@ export default function ExpenseAllocationPage() {
       return (data ?? []) as JournalLine[]
     },
   })
-  const allLines = linesQ.data ?? []
+  const allLines = useMemo(() => linesQ.data ?? [], [linesQ.data])
   const expenseAccountIds = useMemo(() => new Set(accounts.filter(account => account.account_type === 'expense').map(account => account.id)), [accounts])
   const expenseLines = useMemo(() => allLines.filter(line => expenseAccountIds.has(line.account_id)), [allLines, expenseAccountIds])
   const expenseLineIds = useMemo(() => expenseLines.map(line => line.id), [expenseLines])
