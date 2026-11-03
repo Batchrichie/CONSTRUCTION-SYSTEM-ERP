@@ -394,7 +394,7 @@ export default function ExpenseAllocationPage() {
           cost_code_id: row.cost_code_id || null,
           cost_centre_id: row.attribution_scope === 'overhead' ? row.cost_centre_id : null,
           allocation_side: lineSide(line),
-          amount: Number(row.amount),
+          amount: row.amount,
           description: row.description.trim() || null,
         })),
       })
