@@ -71,9 +71,9 @@ export default function ProjectCostSetupPage() {
     },
   })
 
-  const codes = codesQ.data ?? []
-  const centres = centresQ.data ?? []
-  const branches = branchesQ.data ?? []
+  const codes = useMemo(() => codesQ.data ?? [], [codesQ.data])
+  const centres = useMemo(() => centresQ.data ?? [], [centresQ.data])
+  const branches = useMemo(() => branchesQ.data ?? [], [branchesQ.data])
   const filteredCodes = useMemo(() => codes.filter(item => [item.code, item.name, label(item.category)].some(value => value.toLowerCase().includes(search.trim().toLowerCase()))), [codes, search])
   const filteredCentres = useMemo(() => centres.filter(item => [item.code, item.name, label(item.centre_type), branches.find(branch => branch.id === item.branch_id)?.name ?? ''].some(value => value.toLowerCase().includes(search.trim().toLowerCase()))), [centres, branches, search])
 
