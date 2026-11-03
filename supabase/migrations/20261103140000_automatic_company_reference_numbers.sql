@@ -47,14 +47,11 @@ as $$
 declare
   v_field text := tg_argv[0];
   v_prefix text := tg_argv[1];
-  v_existing text;
   v_generated text;
 begin
-  v_existing := to_jsonb(new)->>v_field;
-  if nullif(btrim(v_existing), '') is null then
-    v_generated := private.next_reference(tg_table_name, v_prefix, 4);
-    new := jsonb_populate_record(new, jsonb_build_object(v_field, v_generated));
-  end if;
+  -- Always assign on INSERT. Clients cannot reserve, reuse or override references.
+  v_generated := private.next_reference(tg_table_name, v_prefix, 4);
+  new := jsonb_populate_record(new, jsonb_build_object(v_field, v_generated));
   return new;
 end;
 $$;
