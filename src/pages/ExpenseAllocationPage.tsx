@@ -77,13 +77,25 @@ const today = () => {
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
 }
 const amount = (value: string | number | null | undefined) => Number(value ?? 0)
-const round4 = (value: number) => Math.round((value + Number.EPSILON) * 10000) / 10000
+const decimalUnits = (value: string | number | null | undefined): bigint | null => {
+  const match = /^([+-]?)(\d+)(?:\.(\d{0,4}))?$/.exec(String(value ?? '0').trim())
+  if (!match) return null
+  const units = BigInt(match[2]) * 10000n + BigInt((match[3] ?? '').padEnd(4, '0') || '0')
+  return match[1] === '-' ? -units : units
+}
+const exactUnits = (value: string | number | null | undefined) => decimalUnits(value) ?? 0n
+const sumUnits = (values: Array<string | number | null | undefined>) => values.reduce((sum, value) => sum + exactUnits(value), 0n)
+const isPositiveAmount = (value: string | number | null | undefined) => {
+  const units = decimalUnits(value)
+  return units !== null && units > 0n
+}
 const label = (value: string) => value.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase())
 const money = (value: number, currency: string) => new Intl.NumberFormat('en-GH', {
   style: 'currency', currency: currency || 'GHS', minimumFractionDigits: 2, maximumFractionDigits: 2,
 }).format(value)
-const lineAmount = (line: JournalLine) => amount(line.debit) > 0 ? amount(line.debit) : amount(line.credit)
-const lineSide = (line: JournalLine): 'debit' | 'credit' => amount(line.debit) > 0 ? 'debit' : 'credit'
+const lineAmountText = (line: JournalLine) => isPositiveAmount(line.debit) ? String(line.debit) : String(line.credit)
+const lineAmount = (line: JournalLine) => amount(lineAmountText(line))
+const lineSide = (line: JournalLine): 'debit' | 'credit' => isPositiveAmount(line.debit) ? 'debit' : 'credit'
 
 function defaultAllocation(projects: Project[], centres: CostCentre[], side: 'debit' | 'credit' = 'debit'): AllocationDraft {
   if (projects.length > 0) {
@@ -350,12 +362,12 @@ export default function ExpenseAllocationPage() {
       return
     }
     const rows = allocationDrafts[line.id] ?? []
-    const total = round4(rows.reduce((sum, row) => sum + amount(row.amount), 0))
-    if (total > round4(lineAmount(line))) {
+    const total = sumUnits(rows.map(row => row.amount))
+    if (total > exactUnits(lineAmountText(line))) {
       setError('The allocation total cannot exceed the journal line amount.')
       return
     }
-    if (rows.some(row => amount(row.amount) <= 0 || (row.attribution_scope === 'project' ? !row.project_id : !row.cost_centre_id))) {
+    if (rows.some(row => !isPositiveAmount(row.amount) || (row.attribution_scope === 'project' ? !row.project_id : !row.cost_centre_id))) {
       setError('Complete each allocation row with a valid destination and a positive amount.')
       return
     }
@@ -393,25 +405,25 @@ export default function ExpenseAllocationPage() {
       setError('Enter the expense date and a clear description.')
       return
     }
-    if (form.expense_lines.length === 0 || form.expense_lines.some(line => !line.account_id || amount(line.amount) <= 0)) {
+    if (form.expense_lines.length === 0 || form.expense_lines.some(line => !line.account_id || !isPositiveAmount(line.amount))) {
       setError('Every expense line needs an expense account and a positive amount.')
       return
     }
-    if (form.settlement_lines.length === 0 || form.settlement_lines.some(line => !line.account_id || amount(line.amount) <= 0)) {
+    if (form.settlement_lines.length === 0 || form.settlement_lines.some(line => !line.account_id || !isPositiveAmount(line.amount))) {
       setError('Add at least one payment or payable account with a positive amount.')
       return
     }
-    if (round4(expenseTotal) !== round4(settlementTotal)) {
+    if (sumUnits(form.expense_lines.map(line => line.amount)) !== sumUnits(form.settlement_lines.map(line => line.amount))) {
       setError('The payment/payable total must equal the total expense amount.')
       return
     }
     for (const line of form.expense_lines) {
-      const allocated = round4(line.allocations.reduce((sum, row) => sum + amount(row.amount), 0))
-      if (line.allocations.length === 0 || allocated !== round4(amount(line.amount))) {
+      const allocated = sumUnits(line.allocations.map(row => row.amount))
+      if (line.allocations.length === 0 || allocated !== exactUnits(line.amount)) {
         setError('Allocate the full amount of every expense line before creating the journal.')
         return
       }
-      if (line.allocations.some(row => amount(row.amount) <= 0 || (row.attribution_scope === 'project' ? !row.project_id : !row.cost_centre_id))) {
+      if (line.allocations.some(row => !isPositiveAmount(row.amount) || (row.attribution_scope === 'project' ? !row.project_id : !row.cost_centre_id))) {
         setError('Each allocation needs a valid project or overhead cost centre and a positive amount.')
         return
       }
@@ -425,14 +437,14 @@ export default function ExpenseAllocationPage() {
       const journalLines = [
         ...form.expense_lines.map(line => ({
           account_id: line.account_id,
-          debit: Number(line.amount),
-          credit: 0,
+          debit: line.amount,
+          credit: '0',
           description: line.description.trim() || null,
         })),
         ...form.settlement_lines.map(line => ({
           account_id: line.account_id,
-          debit: 0,
-          credit: Number(line.amount),
+          debit: '0',
+          credit: line.amount,
           description: line.description.trim() || null,
         })),
       ]
@@ -468,7 +480,7 @@ export default function ExpenseAllocationPage() {
             cost_code_id: row.cost_code_id || null,
             cost_centre_id: row.attribution_scope === 'overhead' ? row.cost_centre_id : null,
             allocation_side: 'debit',
-            amount: Number(row.amount),
+            amount: row.amount,
             description: row.description.trim() || null,
           })),
         })
@@ -506,8 +518,8 @@ export default function ExpenseAllocationPage() {
     }
     const incomplete = lines.filter(line => {
       const rows = allocationsQ.data!.filter(row => row.journal_line_id === line.id)
-      const total = round4(rows.reduce((sum, row) => sum + amount(row.amount), 0))
-      return total !== round4(lineAmount(line))
+      const total = sumUnits(rows.map(row => row.amount))
+      return total !== exactUnits(lineAmountText(line))
     })
     if (incomplete.length > 0) {
       setError('Every expense debit and credit must be fully allocated before posting.')
@@ -598,7 +610,7 @@ export default function ExpenseAllocationPage() {
             <div className="form-wide expense-totals">
               <div><span>Total expense debit</span><strong>{money(expenseTotal, currency)}</strong></div>
               <div><span>Total payment / payable credit</span><strong>{money(settlementTotal, currency)}</strong></div>
-              <div><span>Difference</span><strong className={round4(expenseTotal - settlementTotal) === 0 ? 'balanced' : 'unbalanced'}>{money(Math.abs(expenseTotal - settlementTotal), currency)}</strong></div>
+              <div><span>Difference</span><strong className={sumUnits(form.expense_lines.map(line => line.amount)) === sumUnits(form.settlement_lines.map(line => line.amount)) ? 'balanced' : 'unbalanced'}>{money(Math.abs(expenseTotal - settlementTotal), currency)}</strong></div>
             </div>
             {error && <div className="form-alert error form-wide">{error}</div>}
             <div className="form-actions form-wide"><button type="button" className="outline-button" onClick={() => setShowCreate(false)} disabled={busy}>Cancel</button><button className="primary-button" disabled={busy || accounts.filter(account => account.account_type === 'expense').length === 0 || accounts.filter(account => ['asset', 'liability'].includes(account.account_type)).length === 0}>{busy ? 'Creating and posting…' : 'Create and post expense'}</button></div>
@@ -661,7 +673,7 @@ export default function ExpenseAllocationPage() {
         <div><span>Draft expense journals</span><strong>{draftJournals.length}</strong></div>
         <div><span>Expense lines awaiting allocation</span><strong>{expenseLines.filter(line => {
           const saved = allocationsQ.data?.filter(item => item.journal_line_id === line.id) ?? []
-          return round4(saved.reduce((sum, item) => sum + amount(item.amount), 0)) !== round4(lineAmount(line))
+          return sumUnits(saved.map(item => item.amount)) !== exactUnits(lineAmountText(line))
         }).length}</strong></div>
         <div><span>Active projects</span><strong>{projects.length}</strong></div>
         <div><span>Currency</span><strong>{currency}</strong></div>
@@ -679,7 +691,7 @@ export default function ExpenseAllocationPage() {
               const count = expenseLines.filter(line => line.journal_entry_id === journal.id).length
               const allocated = expenseLines.filter(line => line.journal_entry_id === journal.id).every(line => {
                 const saved = allocationsQ.data?.filter(item => item.journal_line_id === line.id) ?? []
-                return round4(saved.reduce((sum, item) => sum + amount(item.amount), 0)) === round4(lineAmount(line))
+                return sumUnits(saved.map(item => item.amount)) === exactUnits(lineAmountText(line))
               })
               return <tr key={journal.id}><td>{new Date(journal.journal_date + 'T00:00:00').toLocaleDateString('en-GB')}</td><td><strong>{journal.journal_number || 'Draft journal'}</strong><small>{journal.description}</small></td><td>{count}</td><td className="numeric">{money(amount(journal.total_debit), currency)}</td><td><span className={'estimate-status ' + (allocated ? 'approved' : 'submitted')}>{allocated ? 'Allocated' : 'Needs allocation'}</span></td><td><button className="text-button" onClick={() => { setError(''); setSelectedJournalId(journal.id) }}>Review →</button></td></tr>
             })}
