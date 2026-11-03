@@ -155,3 +155,49 @@ h1{font:700 28px Manrope,sans-serif;letter-spacing:-.8px;margin-bottom:6px;color
 .data-table tfoot th{border-top:1px solid #dfe5eb;padding:12px 10px;font-size:10px;color:#334258}
 @media(max-width:850px){.budget-line-editor{grid-template-columns:1fr 1fr}.budget-line-note{grid-column:1/-1}.budget-detail-meta{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.budget-line-editor{grid-template-columns:1fr}.budget-line-note{grid-column:auto}.budget-detail-meta{grid-template-columns:1fr 1fr}.budget-history>div{align-items:flex-start;flex-direction:column}.budget-history small{text-align:left}}
+
+
+/* Phase 7.4 Step 4 — expense allocation workspace */
+.expense-form-section{border-top:1px solid #edf0f3;padding-top:15px}
+.expense-entry-card{border:1px solid #e8edf2;border-radius:8px;padding:13px;margin:10px 0;background:#fcfcfd}
+.expense-entry-heading,.expense-allocation-heading,.draft-expense-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.expense-entry-heading strong,.expense-allocation-heading strong{font-size:11px;color:#344257}
+.expense-entry-grid{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(130px,.65fr) minmax(180px,1fr);gap:10px;margin-top:12px}
+.expense-entry-grid label,.allocation-editor-row label,.settlement-editor-row label{display:flex;flex-direction:column;gap:5px;font-size:9px;font-weight:600;color:#5b6879;min-width:0}
+.expense-entry-grid input,.expense-entry-grid select,.allocation-editor-row input,.allocation-editor-row select,.settlement-editor-row input,.settlement-editor-row select{width:100%;min-width:0;border:1px solid #dfe5eb;border-radius:5px;padding:8px 9px;background:#fff;color:#263449;font:10px 'DM Sans',sans-serif}
+.expense-allocation-heading{margin:14px 0 5px;padding-top:10px;border-top:1px dashed #e4e9ee}
+.expense-allocation-heading span{font-size:9px;color:#8a96a5;font-variant-numeric:tabular-nums}
+.allocation-editor-row{display:grid;grid-template-columns:minmax(100px,.7fr) minmax(160px,1.2fr) minmax(145px,1fr) minmax(115px,.75fr) 28px;gap:8px;align-items:end;padding:9px 0;border-bottom:1px solid #edf0f3}
+.icon-remove{width:27px;height:31px;display:grid;place-items:center;border:1px solid #e6ebf0;border-radius:5px;background:#fff;color:#9a6260}
+.icon-remove:disabled{opacity:.35;cursor:not-allowed}
+.add-allocation-button{display:inline-flex;align-items:center;gap:5px;margin-top:9px}
+.settlement-editor-row{display:grid;grid-template-columns:minmax(200px,1.3fr) minmax(120px,.65fr) minmax(180px,1fr) 28px;gap:9px;align-items:end;padding:9px 0;border-bottom:1px solid #edf0f3}
+.expense-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:13px;background:#f7f8fa;border:1px solid #e8edf2;border-radius:7px}
+.expense-totals span,.expense-totals strong{display:block}
+.expense-totals span{font-size:9px;color:#8994a4}
+.expense-totals strong{font-size:12px;color:#2c3a4e;margin-top:5px;font-variant-numeric:tabular-nums}
+.balanced{color:#3f8051!important}.unbalanced{color:#a34c42!important}
+.expense-draft-detail{display:flex;flex-direction:column;gap:15px}
+.draft-expense-line{border:1px solid #e8edf2;border-radius:8px;padding:13px}
+.draft-expense-heading{margin-bottom:9px}
+.draft-expense-heading strong,.draft-expense-heading small{display:block}
+.draft-expense-heading strong{font-size:10px;color:#344257}
+.draft-expense-heading small{font-size:9px;color:#8b97a5;margin-top:4px}
+.draft-expense-heading>div:last-child{text-align:right}
+.saved-allocation-row{grid-template-columns:minmax(100px,.7fr) minmax(160px,1.2fr) minmax(145px,1fr) minmax(115px,.75fr) 28px}
+.draft-line-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:10px}
+.draft-line-actions .outline-button{display:flex;align-items:center;gap:5px}
+.expense-notice{margin-bottom:15px}
+@media(max-width:900px){.expense-entry-grid{grid-template-columns:1fr 1fr}.expense-description{grid-column:1/-1}.allocation-editor-row,.saved-allocation-row{grid-template-columns:1fr 1fr}.allocation-editor-row .icon-remove{justify-self:end}.settlement-editor-row{grid-template-columns:1fr 1fr}.settlement-editor-row .icon-remove{justify-self:end}}
+@media(max-width:600px){.expense-entry-grid,.allocation-editor-row,.saved-allocation-row,.settlement-editor-row,.expense-totals{grid-template-columns:1fr}.expense-description{grid-column:auto}.allocation-editor-row .icon-remove,.settlement-editor-row .icon-remove{justify-self:start}.draft-expense-heading{align-items:flex-start;flex-direction:column}.draft-expense-heading>div:last-child{text-align:left}.draft-line-actions{align-items:flex-start;flex-direction:column}}
+
+
+/* Keep sidebar branding and footer visible while the navigation scrolls independently. */
+.sidebar{height:100vh;height:100dvh;min-height:0;overflow:hidden}
+.brand,.company-switcher,.sidebar-footer{flex:0 0 auto}
+.sidebar-navigation{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding-right:4px;scrollbar-width:thin;scrollbar-color:#43536a #111d2d}
+.sidebar-navigation::-webkit-scrollbar{width:6px}
+.sidebar-navigation::-webkit-scrollbar-track{background:#111d2d}
+.sidebar-navigation::-webkit-scrollbar-thumb{background:#43536a;border-radius:8px}
+.nav-section{flex:0 0 auto}
+.sidebar-footer{margin-top:0}
