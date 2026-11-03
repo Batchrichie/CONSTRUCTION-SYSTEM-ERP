@@ -3,6 +3,7 @@ import { CheckCircle2, ClipboardList, Copy, Plus, Search, Send, XCircle } from '
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import Modal from '../components/Modal'
+import { isPositiveAmount, sumUnits, unitsToNumber } from '../lib/decimalAmount'
 
 type BudgetStatus = 'draft' | 'submitted' | 'approved' | 'rejected'
 type Project = { id: string; project_code: string; name: string; status: string; currency_code: string }
@@ -27,10 +28,7 @@ const money = (amount: number, currency: string) => new Intl.NumberFormat('en-GH
   style: 'currency', currency: currency || 'GHS', minimumFractionDigits: 2, maximumFractionDigits: 2,
 }).format(Number(amount || 0))
 const blankLine = (): BudgetLine => ({ cost_code_id: '', budget_amount: '', notes: '' })
-const isPositiveBudgetAmount = (value: string | number) => {
-  const amount = String(value).trim()
-  return /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(amount) && Number.isFinite(Number(amount)) && Number(amount) > 0
-}
+const isPositiveBudgetAmount = (value: string | number) => isPositiveAmount(value)
 
 export default function ProjectBudgetsPage() {
   const { client, company, roleCode } = useAuth()
@@ -114,9 +112,9 @@ export default function ProjectBudgetsPage() {
     },
   })
 
-  const projects = projectsQ.data ?? []
-  const codes = codesQ.data ?? []
-  const budgets = budgetsQ.data ?? []
+  const projects = useMemo(() => projectsQ.data ?? [], [projectsQ.data])
+  const codes = useMemo(() => codesQ.data ?? [], [codesQ.data])
+  const budgets = useMemo(() => budgetsQ.data ?? [], [budgetsQ.data])
   const filtered = useMemo(() => budgets.filter(item => {
     const project = projects.find(candidate => candidate.id === item.project_id)
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter
@@ -262,8 +260,8 @@ export default function ProjectBudgetsPage() {
   }
 
   const selectedLines = linesQ.data ?? []
-  const budgetTotal = selectedLines.reduce((sum, line) => sum + Number(line.budget_amount || 0), 0)
-  const approvedTotal = selectedLines.reduce((sum, line) => sum + Number(line.approved_amount || 0), 0)
+  const budgetTotal = unitsToNumber(sumUnits(selectedLines.map(line => line.budget_amount)))
+  const approvedTotal = unitsToNumber(sumUnits(selectedLines.map(line => line.approved_amount)))
 
   return (
     <div className="page-content">

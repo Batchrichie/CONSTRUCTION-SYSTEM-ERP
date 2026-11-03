@@ -127,14 +127,24 @@ export default function BudgetVsActualPage() {
     },
   })
 
-  const projects = projectsQ.data ?? []
-  const codes = codesQ.data ?? []
+  const projects = useMemo(() => projectsQ.data ?? [], [projectsQ.data])
+  const codes = useMemo(() => codesQ.data ?? [], [codesQ.data])
   const currency = company?.base_currency ?? 'GHS'
-  const selectedProjects = projects.filter(project => projectFilter === 'all' || project.id === projectFilter)
-  const selectedProjectIds = new Set(selectedProjects.map(project => project.id))
-  const approvedByVersion = new Map(latestVersions.map(version => [version.project_id, version]))
-  const budgetRows = (budgetsQ.data ?? []).filter(line => selectedProjectIds.has(line.project_id))
-  const actualRows = (actualsQ.data ?? []).filter(row => selectedProjectIds.has(row.project_id))
+  const selectedProjectIds = useMemo(() => new Set(
+    projects.filter(project => projectFilter === 'all' || project.id === projectFilter).map(project => project.id),
+  ), [projects, projectFilter])
+  const approvedByVersion = useMemo(
+    () => new Map(latestVersions.map(version => [version.project_id, version])),
+    [latestVersions],
+  )
+  const budgetRows = useMemo(
+    () => (budgetsQ.data ?? []).filter(line => selectedProjectIds.has(line.project_id)),
+    [budgetsQ.data, selectedProjectIds],
+  )
+  const actualRows = useMemo(
+    () => (actualsQ.data ?? []).filter(row => selectedProjectIds.has(row.project_id)),
+    [actualsQ.data, selectedProjectIds],
+  )
 
   const reportRows = useMemo(() => {
     const keyFor = (projectId: string, costCodeId: string | null) => projectId + ':' + (costCodeId ?? 'unclassified')

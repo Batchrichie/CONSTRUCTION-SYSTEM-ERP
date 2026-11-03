@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(8);
+select extensions.plan(14);
 
 -- Test-only fixture. Every row is rolled back at the end of this test.
 create temporary table _project_cost_fixture (
@@ -17,7 +17,8 @@ create temporary table _project_cost_fixture (
   cash_account_id uuid,
   journal_id uuid,
   expense_line_id uuid,
-  cash_line_id uuid
+  cash_line_id uuid,
+  budget_version_id uuid
 ) on commit drop;
 
 insert into _project_cost_fixture (
@@ -38,38 +39,55 @@ select owner_id, 'authenticated', 'authenticated',
        '{}'::jsonb, '{}'::jsonb
 from _project_cost_fixture;
 
-insert into public.companies (
-  id, legal_name, display_name, base_currency, country_code, created_by
-)
-select company_id, 'Project Cost Test Company', 'Project Cost Test',
-       'GHS', 'GH', owner_id
-from _project_cost_fixture;
+grant select, update on _project_cost_fixture to authenticated;
 
+select set_config(
+  'request.jwt.claim.sub',
+  (select owner_id::text from _project_cost_fixture),
+  true
+);
+set local role authenticated;
+
+-- Create the company and first owner through the authenticated onboarding RPC.
+update _project_cost_fixture
+set company_id = public.create_company_for_current_user(
+  'Project Cost Test Company',
+  'Project Cost Test'
+);
+
+reset role;
 select private.seed_default_chart_of_accounts(company_id)
 from _project_cost_fixture;
+set local role authenticated;
 
-insert into public.company_memberships (
-  company_id, user_id, role_id, status, joined_at
-)
-select f.company_id, f.owner_id, r.id, 'active', now()
-from _project_cost_fixture f
-cross join public.roles r
-where r.code = 'owner';
+-- Open the fiscal year and accounting period through their public workflows.
+update _project_cost_fixture
+set fiscal_year_id = public.create_fiscal_year(
+  company_id,
+  'PC-' || left(company_id::text, 8),
+  date '2026-01-01',
+  date '2026-12-31'
+);
 
-insert into public.fiscal_years (
-  id, company_id, year_code, start_date, end_date, status, created_by
-)
-select fiscal_year_id, company_id, 'PC-' || left(company_id::text, 8),
-       date '2026-01-01', date '2026-12-31', 'open', owner_id
-from _project_cost_fixture;
+select public.transition_fiscal_year_status(
+  (select fiscal_year_id from _project_cost_fixture),
+  'open'
+);
 
-insert into public.accounting_periods (
-  id, company_id, fiscal_year_id, period_number, period_name,
-  start_date, end_date, status
-)
-select period_id, company_id, fiscal_year_id, 1, 'January',
-       date '2026-01-01', date '2026-01-31', 'open'
-from _project_cost_fixture;
+update _project_cost_fixture
+set period_id = public.create_accounting_period(
+  company_id,
+  fiscal_year_id,
+  1::smallint,
+  'January',
+  date '2026-01-01',
+  date '2026-01-31'
+);
+
+select public.transition_accounting_period_status(
+  (select period_id from _project_cost_fixture),
+  'open'
+);
 
 insert into public.projects (
   id, company_id, project_code, name, created_by
@@ -98,12 +116,6 @@ update _project_cost_fixture f
 set cash_account_id = a.id
 from public.chart_of_accounts a
 where a.company_id = f.company_id and a.account_code = '1110';
-
-select set_config(
-  'request.jwt.claim.sub',
-  (select owner_id::text from _project_cost_fixture),
-  true
-);
 
 update _project_cost_fixture f
 set journal_id = public.create_journal_draft(
@@ -158,6 +170,24 @@ select extensions.throws_ok(
   '23514',
   'Every debit and credit on an expense account must be fully allocated to a project or overhead cost centre',
   'An expense journal cannot post before its expense amount is fully allocated'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.replace_journal_line_cost_allocations(%L::uuid,%L::uuid,%L::jsonb)',
+    (select company_id from _project_cost_fixture),
+    (select expense_line_id from _project_cost_fixture),
+    jsonb_build_array(jsonb_build_object(
+      'attribution_scope', 'project',
+      'project_id', (select project_one_id from _project_cost_fixture),
+      'cost_code_id', (select cost_code_id from _project_cost_fixture),
+      'allocation_side', 'debit',
+      'amount', '1.00001'
+    ))::text
+  ),
+  '22023',
+  'Allocation amounts must not exceed 4 decimal places',
+  'Project cost allocations reject more than four decimal places without rounding'
 );
 
 select public.replace_journal_line_cost_allocations(
@@ -220,6 +250,81 @@ select extensions.is(
   'The project cost ledger reconciles to the full expense debit'
 );
 
+-- Complete the authenticated project-cost workflow with an approved budget
+-- and compare the approved allowance against the posted project actual.
+update _project_cost_fixture f
+set budget_version_id = public.save_project_budget_draft(
+  f.company_id,
+  f.project_one_id,
+  null,
+  'Approved project baseline',
+  jsonb_build_array(jsonb_build_object(
+    'cost_code_id', f.cost_code_id,
+    'budget_amount', '60.0000',
+    'notes', 'Project one materials baseline'
+  ))
+);
+
+select extensions.is(
+  (select status from public.project_budget_versions
+   where id = (select budget_version_id from _project_cost_fixture)),
+  'draft',
+  'The project budget is created as a draft'
+);
+
+select public.transition_project_budget(
+  (select company_id from _project_cost_fixture),
+  (select budget_version_id from _project_cost_fixture),
+  'submitted',
+  null
+);
+
+select extensions.is(
+  (select status from public.project_budget_versions
+   where id = (select budget_version_id from _project_cost_fixture)),
+  'submitted',
+  'The project budget can be submitted for approval'
+);
+
+select public.transition_project_budget(
+  (select company_id from _project_cost_fixture),
+  (select budget_version_id from _project_cost_fixture),
+  'approved',
+  null
+);
+
+select extensions.is(
+  (select status from public.project_budget_versions
+   where id = (select budget_version_id from _project_cost_fixture)),
+  'approved',
+  'The project budget can be approved by an owner'
+);
+
+select extensions.is(
+  (select approved_amount
+   from public.project_budgets
+   where budget_version_id = (select budget_version_id from _project_cost_fixture)),
+  60::numeric,
+  'Approval releases the full approved budget amount'
+);
+
+select extensions.is(
+  (
+    select sum(b.approved_amount)
+    from public.project_budgets b
+    where b.company_id = (select company_id from _project_cost_fixture)
+      and b.project_id = (select project_one_id from _project_cost_fixture)
+  ) - (
+    select sum(l.signed_cost)
+    from public.project_cost_ledger l
+    where l.company_id = (select company_id from _project_cost_fixture)
+      and l.project_id = (select project_one_id from _project_cost_fixture)
+      and l.cost_code_id = (select cost_code_id from _project_cost_fixture)
+  ),
+  0::numeric,
+  'The approved project budget reconciles to posted project actuals'
+);
+
 select public.reverse_journal_entry(
   (select journal_id from _project_cost_fixture),
   date '2026-01-20',
@@ -242,5 +347,6 @@ select extensions.is(
   'The original expense and its reversal net project cost to zero'
 );
 
+reset role;
 select * from extensions.finish();
 rollback;

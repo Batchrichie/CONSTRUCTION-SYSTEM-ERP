@@ -101,10 +101,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const userId = session?.user?.id ?? null
+
   const refreshCompany = useCallback(async () => {
     const requestVersion = ++companyRequestVersion.current
 
-    if (!supabase || !session?.user) {
+    if (!supabase || !userId) {
       setCompany(null)
       setRoleCode(null)
       setCompanyError(null)
@@ -119,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: membership, error: membershipError } = await supabase
         .from('company_memberships')
         .select('company_id, roles(code)')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .eq('status', 'active')
         .limit(1)
         .maybeSingle()
@@ -160,12 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCompanyLoading(false)
       }
     }
-  }, [session?.user?.id])
+  }, [userId])
 
   useEffect(() => {
     if (loading) return
 
-    if (!session?.user) {
+    if (!userId) {
       companyRequestVersion.current += 1
       setCompany(null)
       setRoleCode(null)
@@ -175,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     void refreshCompany().catch(() => undefined)
-  }, [loading, session?.user?.id, refreshCompany])
+  }, [loading, userId, refreshCompany])
 
   const value = useMemo<State>(
     () => ({
@@ -198,6 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <Context.Provider value={value}>{children}</Context.Provider>
 }
 
+// This context module intentionally exports its hook alongside the provider.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const value = useContext(Context)
   if (!value) throw new Error('useAuth must be used within AuthProvider')

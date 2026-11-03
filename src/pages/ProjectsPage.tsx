@@ -83,8 +83,8 @@ export default function ProjectsPage() {
       return (data ?? []) as Customer[]
     },
   })
-  const projects = projectsQ.data ?? []
-  const customers = customersQ.data ?? []
+  const projects = useMemo(() => projectsQ.data ?? [], [projectsQ.data])
+  const customers = useMemo(() => customersQ.data ?? [], [customersQ.data])
   const filtered = useMemo(() => projects.filter(project => {
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter
     const query = search.trim().toLowerCase()
