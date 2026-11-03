@@ -619,7 +619,7 @@ export default function ExpenseAllocationPage() {
           closeDisabled={busy}
         >
           <div className="expense-draft-detail">
-            <div className="budget-detail-meta"><span>Reference</span><strong>{selectedJournal.reference || '—'}</strong><span>Source</span><strong>{label(selectedJournal.source_module)}</strong><span>Total journal</span><strong>{money(amount(selectedJournal.total_debit), currency)}</strong></div>
+            <div className="budget-detail-meta"><span>Reference</span><strong>{selectedJournal.reference || '—'}</strong><span>Source</span><strong>{label(selectedJournal.source_module)}</strong><span>Total journal</span><strong>{money(amountForDisplay(selectedJournal.total_debit), currency)}</strong></div>
             {selectedExpenseLines.map(line => {
               const rows = allocationDrafts[line.id] ?? []
               const allocatedUnits = sumUnits(rows.map(row => row.amount))
@@ -685,7 +685,7 @@ export default function ExpenseAllocationPage() {
                 const saved = allocationsQ.data?.filter(item => item.journal_line_id === line.id) ?? []
                 return sumUnits(saved.map(item => item.amount)) === exactUnits(lineAmountText(line))
               })
-              return <tr key={journal.id}><td>{new Date(journal.journal_date + 'T00:00:00').toLocaleDateString('en-GB')}</td><td><strong>{journal.journal_number || 'Draft journal'}</strong><small>{journal.description}</small></td><td>{count}</td><td className="numeric">{money(amount(journal.total_debit), currency)}</td><td><span className={'estimate-status ' + (allocated ? 'approved' : 'submitted')}>{allocated ? 'Allocated' : 'Needs allocation'}</span></td><td><button className="text-button" onClick={() => { setError(''); setSelectedJournalId(journal.id) }}>Review →</button></td></tr>
+              return <tr key={journal.id}><td>{new Date(journal.journal_date + 'T00:00:00').toLocaleDateString('en-GB')}</td><td><strong>{journal.journal_number || 'Draft journal'}</strong><small>{journal.description}</small></td><td>{count}</td><td className="numeric">{money(amountForDisplay(journal.total_debit), currency)}</td><td><span className={'estimate-status ' + (allocated ? 'approved' : 'submitted')}>{allocated ? 'Allocated' : 'Needs allocation'}</span></td><td><button className="text-button" onClick={() => { setError(''); setSelectedJournalId(journal.id) }}>Review →</button></td></tr>
             })}
           </tbody></table></div>}
       </section>
