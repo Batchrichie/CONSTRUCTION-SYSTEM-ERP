@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -127,5 +127,38 @@ describe("core commercial and project pages", () => {
       expect(authMocks.from).toHaveBeenCalledWith("journal_entries"),
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("opens and closes the expense recording workflow", async () => {
+    renderPage(<ExpenseAllocationPage />);
+
+    await waitFor(() =>
+      expect(authMocks.from).toHaveBeenCalledWith("journal_entries"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /record expense/i }));
+
+    expect(
+      screen.getByRole("heading", { name: "Record project expense" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Payment / payable accounts")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      screen.queryByRole("heading", { name: "Record project expense" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the estimate creation modal from the estimates register", async () => {
+    renderPage(<EstimatesPage />);
+
+    await waitFor(() =>
+      expect(authMocks.from).toHaveBeenCalledWith("estimate_totals"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /new estimate/i }));
+
+    expect(
+      screen.getByRole("heading", { name: "Create estimate" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Estimate title")).toBeInTheDocument();
   });
 });
