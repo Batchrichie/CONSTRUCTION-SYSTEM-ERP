@@ -345,6 +345,10 @@ export default function ExpenseAllocationPage() {
 
   async function saveLineAllocations(line: JournalLine) {
     if (!client || !company) return
+    if (allocationsQ.isLoading || allocationsQ.isFetching || !allocationsQ.data) {
+      setError('Wait for saved allocation details to finish loading before changing this line.')
+      return
+    }
     const rows = allocationDrafts[line.id] ?? []
     const total = round4(rows.reduce((sum, row) => sum + amount(row.amount), 0))
     if (total > round4(lineAmount(line))) {
@@ -635,7 +639,7 @@ export default function ExpenseAllocationPage() {
                       {canAllocate && <button type="button" className="icon-remove" aria-label="Remove allocation" onClick={() => setAllocationDrafts(current => ({ ...current, [line.id]: (current[line.id] ?? []).filter((_, rowIndex) => rowIndex !== index) }))}><Trash2 size={14} /></button>}
                     </div>
                   ))}
-                  {canAllocate && <div className="draft-line-actions"><button type="button" className="text-button" onClick={() => addSavedAllocation(line)}><Plus size={12} /> Add allocation</button><button type="button" className="outline-button" onClick={() => void saveLineAllocations(line)} disabled={busy || allocationsQ.isLoading || allocationsQ.isFetching}><Save size={12} /> Save line allocations</button></div>}
+                  {canAllocate && <div className="draft-line-actions"><button type="button" className="text-button" onClick={() => addSavedAllocation(line)}><Plus size={12} /> Add allocation</button><button type="button" className="outline-button" onClick={() => void saveLineAllocations(line)} disabled={busy || allocationsQ.isLoading || allocationsQ.isFetching || allocationsQ.isError || !allocationsQ.data}><Save size={12} /> Save line allocations</button></div>}
                 </section>
               )
             })}
