@@ -29,7 +29,7 @@ const money = (amount: number, currency: string) => new Intl.NumberFormat('en-GH
 const blankLine = (): BudgetLine => ({ cost_code_id: '', budget_amount: '', notes: '' })
 const isPositiveBudgetAmount = (value: string | number) => {
   const amount = String(value).trim()
-  return /^(?:0|[1-9]\\d*)(?:\\.\\d{1,4})?$/.test(amount) && Number.isFinite(Number(amount)) && Number(amount) > 0
+  return /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(amount) && Number.isFinite(Number(amount)) && Number(amount) > 0
 }
 
 export default function ProjectBudgetsPage() {
