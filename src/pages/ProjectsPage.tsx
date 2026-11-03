@@ -151,10 +151,24 @@ export default function ProjectsPage() {
       currency_code: form.currency_code.trim().toUpperCase(),
     }
     try {
-      const result = editing
-        ? await client.from('projects').update(payload).eq('id', editing.id).eq('company_id', company.id)
-        : await client.from('projects').insert({ ...payload, company_id: company.id, created_by: user.id })
-      if (result.error) throw result.error
+      if (editing) {
+        const { data, error } = await client
+          .from('projects')
+          .update(payload)
+          .eq('id', editing.id)
+          .eq('company_id', company.id)
+          .select('id')
+          .maybeSingle()
+        if (error) throw error
+        if (!data) {
+          throw new Error('Project was not updated. It may have been removed or you may no longer have permission to edit it. Refresh the register and try again.')
+        }
+      } else {
+        const { error } = await client
+          .from('projects')
+          .insert({ ...payload, company_id: company.id, created_by: user.id })
+        if (error) throw error
+      }
       await qc.invalidateQueries({ queryKey: ['projects', company.id] })
       setShowForm(false)
       setEditing(null)
