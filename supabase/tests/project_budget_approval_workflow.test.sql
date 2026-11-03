@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(21);
+select extensions.plan(22);
 
 -- The application currently enforces one company per installation. Temporarily
 -- relax that installation constraint inside this rollback-only test transaction
@@ -74,6 +74,22 @@ select other_cost_code_id,other_company_id,'OTHER-MAT-001','Other Tenant Materia
 from _budget_fixture;
 
 select set_config('request.jwt.claim.sub',(select accountant_id::text from _budget_fixture),true);
+
+select extensions.throws_ok(
+  format(
+    'select public.save_project_budget_draft(%L::uuid,%L::uuid,NULL,%L,%L::jsonb)',
+    (select company_id from _budget_fixture),
+    (select project_id from _budget_fixture),
+    'Excess precision must be rejected',
+    jsonb_build_array(jsonb_build_object(
+      'cost_code_id',(select cost_code_id from _budget_fixture),
+      'budget_amount','123.45678'
+    ))::text
+  ),
+  '22023',
+  'Budget amounts must not exceed 4 decimal places (line 1)',
+  'Project budgets reject more than four decimal places instead of rounding'
+);
 
 update _budget_fixture f
 set budget_id = public.save_project_budget_draft(
