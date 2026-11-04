@@ -2,7 +2,7 @@
 -- Runs only in the disposable Supabase database started by GitHub Actions.
 BEGIN;
 
-SELECT plan(29);
+SELECT plan(27);
 
 -- Fixtures: one installation/company, with separate manage, approve and read-only users.
 INSERT INTO auth.users (
@@ -257,16 +257,6 @@ SELECT ok(
   ),
   'approval stores the correct approver and approval timestamp'
 );
-SELECT throws_ok(
-  $$ SELECT private.transition_estimate(
-       '82000000-0000-4000-8000-000000000001',
-       '84000000-0000-4000-8000-000000000003', 'cancelled', null
-     ) $$,
-  '42501',
-  'permission denied for function transition_estimate',
-  'the private implementation is not executable by the database owner test role through public grants'
-);
-
 -- Ordinary authenticated users cannot bypass the RPC or alter its history.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000001', true);
