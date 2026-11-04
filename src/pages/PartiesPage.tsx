@@ -52,9 +52,11 @@ const blank = {
 function ContactsPanel({
   party,
   companyId,
+  canManage,
 }: {
   party: Party;
   companyId: string;
+  canManage: boolean;
 }) {
   const { client } = useAuth();
   const qc = useQueryClient();
@@ -90,27 +92,15 @@ function ContactsPanel({
     setBusy(true);
     setError("");
     try {
-      if (form.is_primary) {
-        const { error: clearError } = await client
-          .from("party_contacts")
-          .update({ is_primary: false })
-          .eq("company_id", companyId)
-          .eq("party_id", party.id)
-          .eq("is_primary", true);
-        if (clearError) throw clearError;
-      }
-      const { error } = await client
-        .from("party_contacts")
-        .insert({
-          company_id: companyId,
-          party_id: party.id,
-          contact_name: form.contact_name.trim(),
-          job_title: form.job_title.trim() || null,
-          email: form.email.trim() || null,
-          phone: form.phone.trim() || null,
-          is_primary: form.is_primary,
-          is_active: true,
-        });
+      const { error } = await client.rpc("create_party_contact", {
+        p_company_id: companyId,
+        p_party_id: party.id,
+        p_contact_name: form.contact_name.trim(),
+        p_job_title: form.job_title.trim() || null,
+        p_email: form.email.trim() || null,
+        p_phone: form.phone.trim() || null,
+        p_is_primary: form.is_primary,
+      });
       if (error) throw error;
       await qc.invalidateQueries({
         queryKey: ["party-contacts", companyId, party.id],
@@ -174,12 +164,14 @@ function ContactsPanel({
                         .join(" · ") || "No contact details"}
                     </small>
                   </div>
-                  <button
-                    className="text-button"
-                    onClick={() => void toggle(c)}
-                  >
-                    {c.is_active ? "Deactivate" : "Reactivate"}
-                  </button>
+                  {canManage && (
+                    <button
+                      className="text-button"
+                      onClick={() => void toggle(c)}
+                    >
+                      {c.is_active ? "Deactivate" : "Reactivate"}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -257,18 +249,22 @@ function ContactsPanel({
                 </div>
               </form>
             </Modal>
-          ) : (
+          ) : canManage ? (
             <button className="outline-button" onClick={() => setAdding(true)}>
               <Plus size={13} /> Add contact person
             </button>
-          )}
+          ) : null}
         </div>
       )}
     </div>
   );
 }
 export default function PartiesPage() {
-  const { client, company } = useAuth();
+  const { client, company, permissions, roleCode } = useAuth();
+  const canManageParties =
+    permissions.includes("parties.manage") ||
+    roleCode === "owner" ||
+    roleCode === "admin";
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "customers" | "suppliers">(
@@ -520,15 +516,17 @@ export default function PartiesPage() {
             company-wide register.
           </p>
         </div>
-        <button
-          className="primary-button"
-          onClick={() => {
-            setError("");
-            setShow(true);
-          }}
-        >
-          <Plus size={15} /> Add party
-        </button>
+        {canManageParties && (
+          <button
+            className="primary-button"
+            onClick={() => {
+              setError("");
+              setShow(true);
+            }}
+          >
+            <Plus size={15} /> Add party
+          </button>
+        )}
       </div>
       <div className="stat-strip">
         <div>
@@ -638,7 +636,7 @@ export default function PartiesPage() {
                           </span>
                         </div>
                       </div>
-                      <ContactsPanel party={p} companyId={company!.id} />
+                      <ContactsPanel party={p} companyId={company!.id} canManage={canManageParties} />
                     </td>
                   </tr>
                 ))}
