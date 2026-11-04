@@ -264,6 +264,7 @@ SELECT throws_ok(
   $$ UPDATE public.estimates SET status = 'approved'
      WHERE id = '84000000-0000-4000-8000-000000000001' $$,
   '42501',
+  NULL,
   'a user cannot directly update estimate status'
 );
 SELECT throws_ok(
@@ -275,18 +276,21 @@ SELECT throws_ok(
        '81000000-0000-4000-8000-000000000001'
      ) $$,
   '42501',
+  NULL,
   'a user cannot insert fabricated status history'
 );
 SELECT throws_ok(
   $$ UPDATE public.estimate_status_history SET note = 'tampered'
      WHERE estimate_id = '84000000-0000-4000-8000-000000000002' $$,
   '42501',
+  NULL,
   'a user cannot modify status history'
 );
 SELECT throws_ok(
   $$ DELETE FROM public.estimate_status_history
      WHERE estimate_id = '84000000-0000-4000-8000-000000000002' $$,
   '42501',
+  NULL,
   'a user cannot delete status history'
 );
 
