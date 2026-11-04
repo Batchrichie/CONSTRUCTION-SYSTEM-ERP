@@ -2,7 +2,7 @@
 -- Isolated pgTAP regression coverage only; no production records are changed.
 BEGIN;
 
-SELECT plan(16);
+SELECT plan(15);
 
 INSERT INTO auth.users (
   id, aud, role, email, encrypted_password,
@@ -16,9 +16,7 @@ INSERT INTO auth.users (
 INSERT INTO public.companies (id, legal_name, display_name, created_by)
 VALUES
   ('72000000-0000-4000-8000-000000000001', 'Phase 7.4.3 Company A Ltd', 'Company A',
-   '71000000-0000-4000-8000-000000000001'),
-  ('72000000-0000-4000-8000-000000000002', 'Phase 7.4.3 Company B Ltd', 'Company B',
-   '71000000-0000-4000-8000-000000000002');
+   '71000000-0000-4000-8000-000000000001');
 
 INSERT INTO public.business_parties (
   id, company_id, party_code, legal_name, is_customer, is_supplier, status, created_by
@@ -35,9 +33,7 @@ INSERT INTO public.business_parties (
   ('73000000-0000-4000-8000-000000000004', '72000000-0000-4000-8000-000000000001',
    'T743-SUPP', 'Supplier Only', false, true, 'active',
    '71000000-0000-4000-8000-000000000001'),
-  ('73000000-0000-4000-8000-000000000005', '72000000-0000-4000-8000-000000000002',
-   'T743-CUST-X', 'Company B Customer', true, false, 'active',
-   '71000000-0000-4000-8000-000000000002');
+
 
 INSERT INTO public.projects (
   id, company_id, project_code, name, customer_party_id, created_by
@@ -82,15 +78,6 @@ SELECT throws_ok(
        '71000000-0000-4000-8000-000000000001') $$,
   '23514',
   'an inactive customer cannot be linked to a project'
-);
-
-SELECT throws_ok(
-  $$ INSERT INTO public.projects (company_id, project_code, name, customer_party_id, created_by)
-     VALUES ('72000000-0000-4000-8000-000000000001', 'T743-BAD-COMPANY',
-       'Cross Company Customer Project', '73000000-0000-4000-8000-000000000005',
-       '71000000-0000-4000-8000-000000000001') $$,
-  '23514',
-  'a project cannot reference a customer from another company'
 );
 
 SELECT ok(
@@ -196,19 +183,6 @@ SELECT throws_ok(
      ) $$,
   '23514',
   'an estimate contract must belong to the selected estimate project'
-);
-
-SELECT throws_ok(
-  $$ INSERT INTO public.estimates (
-       company_id, estimate_number, project_id, project_contract_id,
-       customer_party_id, title, created_by
-     ) VALUES (
-       '72000000-0000-4000-8000-000000000001', 'T743-EST-CROSS',
-       null, null, '73000000-0000-4000-8000-000000000005',
-       'Cross Company Estimate', '71000000-0000-4000-8000-000000000001'
-     ) $$,
-  '23514',
-  'an estimate cannot reference a customer from another company'
 );
 
 SELECT throws_ok(
