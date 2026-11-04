@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   pgtap:
-    name: Supabase migration and pgTAP tests
+    name: Supabase migration, pgTAP and concurrency tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -27,8 +27,16 @@ jobs:
         with:
           version: 2.122.1
 
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
       - name: Start isolated local Supabase stack
         run: supabase start
 
       - name: Run database regression tests
         run: supabase test db
+
+      - name: Run two-session estimate transition concurrency test
+        run: bash scripts/test-estimate-workflow-concurrency.sh
