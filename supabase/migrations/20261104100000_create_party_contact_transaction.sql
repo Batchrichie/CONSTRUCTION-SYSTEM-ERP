@@ -50,8 +50,7 @@ BEGIN
     email,
     phone,
     is_primary,
-    is_active,
-    created_by
+    is_active
   )
   VALUES (
     p_company_id,
@@ -61,8 +60,7 @@ BEGIN
     NULLIF(btrim(coalesce(p_email, '')), ''),
     NULLIF(btrim(coalesce(p_phone, '')), ''),
     coalesce(p_is_primary, false),
-    true,
-    auth.uid()
+    true
   )
   RETURNING id INTO v_contact_id;
 
