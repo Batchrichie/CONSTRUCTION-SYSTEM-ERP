@@ -32,8 +32,7 @@ INSERT INTO public.business_parties (
    '71000000-0000-4000-8000-000000000001'),
   ('73000000-0000-4000-8000-000000000004', '72000000-0000-4000-8000-000000000001',
    'T743-SUPP', 'Supplier Only', false, true, 'active',
-   '71000000-0000-4000-8000-000000000001'),
-
+   '71000000-0000-4000-8000-000000000001');
 
 INSERT INTO public.projects (
   id, company_id, project_code, name, customer_party_id, created_by
