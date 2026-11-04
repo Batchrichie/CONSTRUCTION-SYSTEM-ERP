@@ -14,6 +14,7 @@ type State = {
   user: User | null
   company: Company | null
   roleCode: string | null
+  permissions: string[]
   loading: boolean
   companyLoading: boolean
   companyError: string | null
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [roleCode, setRoleCode] = useState<string | null>(null)
+  const [permissions, setPermissions] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [companyLoading, setCompanyLoading] = useState(false)
   const [companyError, setCompanyError] = useState<string | null>(null)
@@ -57,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userChanged && nextSession) {
         setCompany(null)
         setRoleCode(null)
+        setPermissions([])
         setCompanyError(null)
         setCompanyLoading(true)
       }
@@ -65,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         companyRequestVersion.current += 1
         setCompany(null)
         setRoleCode(null)
+        setPermissions([])
         setCompanyError(null)
         setCompanyLoading(false)
       }
@@ -109,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase || !userId) {
       setCompany(null)
       setRoleCode(null)
+      setPermissions([])
       setCompanyError(null)
       setCompanyLoading(false)
       return
@@ -120,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data: membership, error: membershipError } = await supabase
         .from('company_memberships')
-        .select('company_id, roles(code)')
+        .select('company_id, role_id, roles(code)')
         .eq('user_id', userId)
         .eq('status', 'active')
         .limit(1)
@@ -132,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (requestVersion === companyRequestVersion.current) {
           setCompany(null)
           setRoleCode(null)
+          setPermissions([])
         }
         return
       }
@@ -144,14 +150,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (companyErrorResult) throw companyErrorResult
 
+      const { data: permissionRows, error: permissionError } = await supabase
+        .from('role_permissions')
+        .select('permissions(code)')
+        .eq('role_id', membership.role_id)
+
+      if (permissionError) throw permissionError
+
       if (requestVersion === companyRequestVersion.current) {
         setCompany(companyData as Company)
         setRoleCode((membership.roles as unknown as { code?: string } | null)?.code ?? null)
+        setPermissions(
+          (permissionRows ?? [])
+            .map((row) => (row.permissions as unknown as { code?: string } | null)?.code)
+            .filter((code): code is string => Boolean(code)),
+        )
       }
     } catch (error) {
       if (requestVersion === companyRequestVersion.current) {
         setCompany(null)
         setRoleCode(null)
+        setPermissions([])
         setCompanyError(
           error instanceof Error ? error.message : 'Unable to load the company workspace.',
         )
@@ -171,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       companyRequestVersion.current += 1
       setCompany(null)
       setRoleCode(null)
+      setPermissions([])
       setCompanyError(null)
       setCompanyLoading(false)
       return
@@ -185,6 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       company,
       roleCode,
+      permissions,
       loading,
       companyLoading,
       companyError,
@@ -194,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (supabase) await supabase.auth.signOut()
       },
     }),
-    [session, company, roleCode, loading, companyLoading, companyError, refreshCompany],
+    [session, company, roleCode, permissions, loading, companyLoading, companyError, refreshCompany],
   )
 
   return <Context.Provider value={value}>{children}</Context.Provider>
