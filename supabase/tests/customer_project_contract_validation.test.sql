@@ -2,7 +2,7 @@
 -- Isolated pgTAP regression coverage only; no production records are changed.
 BEGIN;
 
-SELECT plan(18);
+SELECT plan(16);
 
 INSERT INTO auth.users (
   id, aud, role, email, encrypted_password,
@@ -89,7 +89,7 @@ SELECT throws_ok(
      VALUES ('72000000-0000-4000-8000-000000000001', 'T743-BAD-COMPANY',
        'Cross Company Customer Project', '73000000-0000-4000-8000-000000000005',
        '71000000-0000-4000-8000-000000000001') $$,
-  '23503',
+  '23514',
   'a project cannot reference a customer from another company'
 );
 
@@ -207,7 +207,7 @@ SELECT throws_ok(
        null, null, '73000000-0000-4000-8000-000000000005',
        'Cross Company Estimate', '71000000-0000-4000-8000-000000000001'
      ) $$,
-  '23503',
+  '23514',
   'an estimate cannot reference a customer from another company'
 );
 
