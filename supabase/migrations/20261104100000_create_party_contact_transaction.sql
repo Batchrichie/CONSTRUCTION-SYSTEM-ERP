@@ -68,9 +68,13 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.create_party_contact(
+REVOKE EXECUTE ON FUNCTION public.create_party_contact(
   uuid, uuid, text, text, text, text, boolean
-) FROM PUBLIC, anon;
+) FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION public.create_party_contact(
+  uuid, uuid, text, text, text, text, boolean
+) FROM anon;
 
 GRANT EXECUTE ON FUNCTION public.create_party_contact(
   uuid, uuid, text, text, text, text, boolean
