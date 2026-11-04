@@ -37,4 +37,30 @@ describe('decimalAmount', () => {
     expect(isPositiveAmount('-0.01')).toBe(false)
     expect(isPositiveAmount('0.0001')).toBe(true)
   })
+
+  it('sums multiple BOQ line totals exactly at four-decimal precision', () => {
+    expect(unitsToString(sumUnits(['12500.1250', '0.0001', '0.2000', '0.1000']))).toBe('12500.4251')
+  })
+
+  it('calculates estimate totals as subtotal less discount plus tax without floating-point drift', () => {
+    const subtotal = sumUnits(['12500.1250', '0.0001', '0.2000', '0.1000'])
+    const discount = exactUnits('250.0001')
+    const tax = exactUnits('37.5001')
+
+    expect(unitsToString(subtotal - discount + tax)).toBe('12287.9251')
+  })
+
+  it('allows a discount equal to the BOQ subtotal but detects a one-unit excess', () => {
+    const subtotal = sumUnits(['12.3456', '0.0001'])
+
+    expect(exactUnits('12.3457') > subtotal).toBe(false)
+    expect(exactUnits('12.3458') > subtotal).toBe(true)
+  })
+
+  it('rejects blank and malformed commercial amount inputs', () => {
+    expect(decimalUnits('')).toBeNull()
+    expect(decimalUnits('1,000.00')).toBeNull()
+    expect(decimalUnits('1e3')).toBeNull()
+    expect(decimalUnits('1.23456')).toBeNull()
+  })
 })
