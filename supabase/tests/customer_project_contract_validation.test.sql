@@ -67,7 +67,7 @@ SELECT throws_ok(
        'Supplier As Customer', '73000000-0000-4000-8000-000000000004',
        '71000000-0000-4000-8000-000000000001') $$,
   '23514',
-  'a supplier-only party cannot be linked as a project customer'
+  'The linked business party must be an active customer'
 );
 
 SELECT throws_ok(
@@ -76,7 +76,7 @@ SELECT throws_ok(
        'Inactive Customer Project', '73000000-0000-4000-8000-000000000003',
        '71000000-0000-4000-8000-000000000001') $$,
   '23514',
-  'an inactive customer cannot be linked to a project'
+  'The linked business party must be an active customer'
 );
 
 SELECT ok(
@@ -97,7 +97,7 @@ SELECT throws_ok(
        '71000000-0000-4000-8000-000000000001'
      ) $$,
   '23514',
-  'a contract customer must match its project customer'
+  'The contract customer must match the project customer'
 );
 
 SELECT ok(
@@ -122,7 +122,7 @@ SELECT throws_ok(
        'Supplier Estimate', '71000000-0000-4000-8000-000000000001'
      ) $$,
   '23514',
-  'an estimate cannot be issued to a supplier-only party'
+  'An estimate must reference an active business party marked as a customer'
 );
 
 SELECT throws_ok(
@@ -135,7 +135,7 @@ SELECT throws_ok(
        'Inactive Customer Estimate', '71000000-0000-4000-8000-000000000001'
      ) $$,
   '23514',
-  'an estimate cannot reference an inactive customer'
+  'An estimate must reference an active business party marked as a customer'
 );
 
 SELECT throws_ok(
@@ -149,7 +149,7 @@ SELECT throws_ok(
        'Mismatched Project Estimate', '71000000-0000-4000-8000-000000000001'
      ) $$,
   '23514',
-  'an estimate customer must match the linked project customer'
+  'Estimate customer must match the linked project customer'
 );
 
 SELECT throws_ok(
@@ -165,7 +165,7 @@ SELECT throws_ok(
        '71000000-0000-4000-8000-000000000001'
      ) $$,
   '23514',
-  'an estimate customer must match the linked contract customer'
+  'Estimate customer must match the linked project customer'
 );
 
 SELECT throws_ok(
@@ -181,7 +181,7 @@ SELECT throws_ok(
        '71000000-0000-4000-8000-000000000001'
      ) $$,
   '23514',
-  'an estimate contract must belong to the selected estimate project'
+  'The selected contract must belong to the estimate project'
 );
 
 SELECT throws_ok(
@@ -189,7 +189,7 @@ SELECT throws_ok(
      SET is_customer = false
      WHERE id = '73000000-0000-4000-8000-000000000001' $$,
   '23514',
-  'a customer linked to a project or contract cannot lose its customer designation'
+  'A party linked to projects, contracts or estimates cannot lose its customer designation'
 );
 
 SELECT lives_ok(
