@@ -12,12 +12,23 @@ ESTIMATE_ID="84000000-0000-4000-8000-000000000004"
 A_LOG="$(mktemp)"
 B_LOG="$(mktemp)"
 A_PID=""
+B_PID=""
 
 cleanup() {
-  if [[ -n "$A_PID" ]]; then
-    wait "$A_PID" 2>/dev/null || true
-  fi
+  # Stop/wait for both database sessions before removing their fixtures.
+  for pid in "$A_PID" "$B_PID"; do
+    if [[ -n "$pid" ]]; then
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+    fi
+  done
+
+  # Respect restrictive foreign keys: BOQ items reference sections/estimates,
+  # and status history references estimates and auth users.
   psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 <<SQL >/dev/null
+DELETE FROM public.estimate_items WHERE estimate_id = '$ESTIMATE_ID';
+DELETE FROM public.estimate_sections WHERE estimate_id = '$ESTIMATE_ID';
+DELETE FROM public.estimate_status_history WHERE estimate_id = '$ESTIMATE_ID';
 DELETE FROM public.estimates WHERE id = '$ESTIMATE_ID';
 DELETE FROM public.business_parties WHERE id = '$PARTY_ID';
 DELETE FROM public.company_memberships WHERE company_id = '$COMPANY_ID';
