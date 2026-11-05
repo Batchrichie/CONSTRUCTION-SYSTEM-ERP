@@ -146,6 +146,7 @@ A_PID=""
 set +e
 wait "$B_PID"
 B_EXIT=$?
+B_PID=""
 set -e
 if [[ "$B_EXIT" -eq 0 ]]; then
   echo "FAIL: session B unexpectedly succeeded."
