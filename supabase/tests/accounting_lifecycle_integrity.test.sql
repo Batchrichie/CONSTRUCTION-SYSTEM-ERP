@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(12);
+select extensions.plan(10);
 
 -- Lifecycle regression coverage for fiscal-year and accounting-period controls.
 -- All identities and business records are isolated in this transaction.
