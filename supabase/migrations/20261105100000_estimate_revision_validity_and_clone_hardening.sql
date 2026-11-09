@@ -24,8 +24,7 @@ begin
     into v_source
   from public.estimates
   where id = p_estimate_id
-    and company_id = p_company_id
-  for update;
+    and company_id = p_company_id;
 
   if not found then
     raise exception 'Estimate not found' using errcode = 'P0002';
