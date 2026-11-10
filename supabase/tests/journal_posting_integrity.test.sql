@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(18);
+select extensions.plan(19);
 
 -- Exercise the public journal RPCs using authenticated JWT claims. All fixtures
 -- are transaction-scoped and rolled back at the end of the test.
@@ -272,6 +272,37 @@ select extensions.is(
      and r.status = 'posted'),
   1,
   'The reversal is linked to exactly one posted reversing journal'
+);
+
+select extensions.ok(
+  not exists (
+    (
+      select account_id, line_number, debit, credit
+      from public.journal_lines
+      where journal_entry_id = (select journal_id from _journal_fixture)
+      except
+      select account_id, line_number, credit, debit
+      from public.journal_lines
+      where journal_entry_id = (
+        select id from public.journal_entries
+        where reversal_of_journal_id = (select journal_id from _journal_fixture)
+      )
+    )
+    union all
+    (
+      select account_id, line_number, credit, debit
+      from public.journal_lines
+      where journal_entry_id = (
+        select id from public.journal_entries
+        where reversal_of_journal_id = (select journal_id from _journal_fixture)
+      )
+      except
+      select account_id, line_number, debit, credit
+      from public.journal_lines
+      where journal_entry_id = (select journal_id from _journal_fixture)
+    )
+  ),
+  'Every reversal line mirrors its original account, line number, debit and credit exactly'
 );
 
 select extensions.is(
