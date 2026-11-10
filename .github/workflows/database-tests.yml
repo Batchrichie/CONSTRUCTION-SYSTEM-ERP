@@ -40,3 +40,6 @@ jobs:
 
       - name: Run two-session estimate transition concurrency test
         run: bash scripts/test-estimate-workflow-concurrency.sh
+
+      - name: Run two-session duplicate journal posting test
+        run: bash scripts/test-journal-posting-concurrency.sh
