@@ -121,18 +121,32 @@ begin
   for v_line in select value from jsonb_array_elements(p_lines)
   loop
     v_line_number := v_line_number + 1;
-    begin
-      if nullif(v_line->>'debit','') is not null
-         and pg_catalog.scale((v_line->>'debit')::numeric) > 4 then
-        raise exception 'Debit amounts must not exceed 4 decimal places (line %)', v_line_number
+    -- Keep precision validation outside the cast-error handler so the
+    -- specific debit/credit validation messages are not swallowed.
+    if nullif(v_line->>'debit','') is not null then
+      begin
+        if pg_catalog.scale((v_line->>'debit')::numeric) > 4 then
+          raise exception 'Debit amounts must not exceed 4 decimal places (line %)', v_line_number
+            using errcode = '22023';
+        end if;
+      exception when invalid_text_representation or numeric_value_out_of_range then
+        raise exception 'Invalid account_id, debit or credit on journal line %', v_line_number
           using errcode = '22023';
-      end if;
-      if nullif(v_line->>'credit','') is not null
-         and pg_catalog.scale((v_line->>'credit')::numeric) > 4 then
-        raise exception 'Credit amounts must not exceed 4 decimal places (line %)', v_line_number
+      end;
+    end if;
+    if nullif(v_line->>'credit','') is not null then
+      begin
+        if pg_catalog.scale((v_line->>'credit')::numeric) > 4 then
+          raise exception 'Credit amounts must not exceed 4 decimal places (line %)', v_line_number
+            using errcode = '22023';
+        end if;
+      exception when invalid_text_representation or numeric_value_out_of_range then
+        raise exception 'Invalid account_id, debit or credit on journal line %', v_line_number
           using errcode = '22023';
-      end if;
+      end;
+    end if;
 
+    begin
       v_account_id := (v_line->>'account_id')::uuid;
       v_debit := coalesce(nullif(v_line->>'debit','')::numeric,0);
       v_credit := coalesce(nullif(v_line->>'credit','')::numeric,0);
