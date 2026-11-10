@@ -43,6 +43,8 @@ WHERE company_id = '$COMPANY_ID' AND id = '$PERIOD_ID';
 DELETE FROM public.fiscal_years
 WHERE company_id = '$COMPANY_ID' AND id = '$FISCAL_YEAR_ID';
 DELETE FROM public.company_memberships WHERE company_id = '$COMPANY_ID';
+UPDATE public.chart_of_accounts SET parent_account_id = NULL WHERE company_id = '$COMPANY_ID';
+DELETE FROM public.chart_of_accounts WHERE company_id = '$COMPANY_ID';
 DELETE FROM public.companies WHERE id = '$COMPANY_ID';
 DELETE FROM auth.users WHERE id = '$USER_ID';
 SQL
