@@ -47,7 +47,7 @@ where r.code = 'owner';
 
 select extensions.is(
   (select count(*)::integer from public.chart_of_accounts
-   where company_id=(select company_id from _accounting_fixture)
+   where company_id=current_setting('test.accounting_company_id')::uuid
      and account_code='1110'),
   1,
   'Default chart seeding creates leaf accounts beneath newly created grouping accounts'
@@ -292,18 +292,25 @@ select extensions.is(
 
 
 -- Verify system accounts cannot be deactivated through the authenticated Data API.
-set local role authenticated;
+-- Store fixture identifiers in transaction-local settings before switching roles;
+-- the authenticated role should not need access to the test's temporary fixture table.
 select set_config(
   'request.jwt.claim.sub',
   (select user_id::text from _accounting_fixture),
   true
 );
+select set_config(
+  'test.accounting_company_id',
+  (select company_id::text from _accounting_fixture),
+  true
+);
+set local role authenticated;
 
 select extensions.is(
   (with changed as (
     update public.chart_of_accounts
     set is_active=false
-    where company_id=(select company_id from _accounting_fixture)
+    where company_id=current_setting('test.accounting_company_id')::uuid
       and account_code='1110'
     returning id
   )
