@@ -216,14 +216,14 @@ set atomic_journal_id = public.create_journal_draft(
 create function pg_temp.reject_journal_post_audit()
 returns trigger
 language plpgsql
-as $
+as $function$
 begin
   if new.action = 'journal.posted' then
     raise exception 'forced audit failure';
   end if;
   return new;
 end;
-$;
+$function$;
 
 create trigger test_reject_journal_post_audit
 before insert on public.audit_logs
