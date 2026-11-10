@@ -122,7 +122,6 @@ select extensions.is(
   'Trial balance agrees with the contra-account ledger balance'
 );
 
-
 -- The seeded chart must retain its grouping hierarchy and system-account flag.
 select extensions.ok(
   exists (
@@ -290,7 +289,6 @@ select extensions.is(
   'Trial balance reflects the net-zero reversal'
 );
 
-
 -- Verify system accounts cannot be deactivated through the authenticated Data API.
 -- Store fixture identifiers in transaction-local settings before switching roles;
 -- the authenticated role should not need access to the test's temporary fixture table.
@@ -306,17 +304,20 @@ select set_config(
 );
 set local role authenticated;
 
+-- PostgreSQL requires a data-modifying statement to be top-level, so issue the
+-- attempted update directly and assert the protected row remains unchanged.
+update public.chart_of_accounts
+set is_active=false
+where company_id=current_setting('test.accounting_company_id')::uuid
+  and account_code='1110';
+
 select extensions.is(
-  (with changed as (
-    update public.chart_of_accounts
-    set is_active=false
-    where company_id=current_setting('test.accounting_company_id')::uuid
-      and account_code='1110'
-    returning id
-  )
-  select count(*)::integer from changed),
+  (select count(*)::integer from public.chart_of_accounts
+   where company_id=current_setting('test.accounting_company_id')::uuid
+     and account_code='1110'
+     and not is_active),
   0,
-  'An authenticated owner cannot update a seeded system account'
+  'An authenticated owner cannot deactivate a seeded system account'
 );
 
 select extensions.is(
