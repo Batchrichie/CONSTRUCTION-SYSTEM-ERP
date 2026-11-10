@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(9);
+select extensions.plan(10);
 
 -- This test exercises the public accounting RPCs with a real authenticated
 -- identity claim, while keeping all fixture records inside this transaction.
@@ -10,7 +10,8 @@ create temporary table _period_fixture (
   user_id uuid not null,
   company_id uuid not null,
   fiscal_year_id uuid,
-  period_id uuid
+  period_id uuid,
+  blocked_journal_id uuid
 ) on commit drop;
 
 insert into _period_fixture(user_id, company_id)
@@ -30,6 +31,9 @@ insert into public.companies (
 )
 select company_id, 'Period Test Company', 'Period Test',
        'GHS', 'GH', user_id
+from _period_fixture;
+
+select private.seed_default_chart_of_accounts(company_id)
 from _period_fixture;
 
 insert into public.company_memberships (
@@ -130,6 +134,44 @@ select extensions.is(
   ),
   'locked'::text,
   'A closed accounting period can be locked'
+);
+
+update _period_fixture set blocked_journal_id = gen_random_uuid();
+
+-- Insert a draft directly as a privileged test fixture to simulate a journal
+-- that existed before a period was closed; the posting RPC must still recheck.
+insert into public.journal_entries (
+  id, company_id, fiscal_period_id, journal_date, description,
+  currency_code, status, created_by
+)
+select blocked_journal_id, company_id, period_id, date '2026-01-26',
+       'Closed-period posting guard', 'GHS', 'draft', user_id
+from _period_fixture;
+
+insert into public.journal_lines (
+  company_id, journal_entry_id, account_id, line_number, debit, credit
+)
+select f.company_id, f.blocked_journal_id, a.id, 1, 10, 0
+from _period_fixture f
+join public.chart_of_accounts a
+  on a.company_id=f.company_id and a.account_code='1110';
+
+insert into public.journal_lines (
+  company_id, journal_entry_id, account_id, line_number, debit, credit
+)
+select f.company_id, f.blocked_journal_id, a.id, 2, 0, 10
+from _period_fixture f
+join public.chart_of_accounts a
+  on a.company_id=f.company_id and a.account_code='1120';
+
+select extensions.throws_ok(
+  format(
+    'select public.post_journal_entry(%L::uuid)',
+    (select blocked_journal_id from _period_fixture)
+  ),
+  'P0001',
+  'The journal accounting period is not open for posting',
+  'Posting revalidates and rejects a draft assigned to a locked period'
 );
 
 select extensions.is(
