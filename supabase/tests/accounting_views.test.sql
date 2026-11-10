@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(9);
+select extensions.plan(18);
 
 -- Isolated fixture: this test runs on a freshly migrated local Supabase database.
 create temporary table _accounting_fixture (
@@ -36,6 +36,14 @@ from _accounting_fixture;
 
 select private.seed_default_chart_of_accounts(company_id)
 from _accounting_fixture;
+
+insert into public.company_memberships (
+  company_id, user_id, role_id, status, joined_at
+)
+select f.company_id, f.user_id, r.id, 'active', now()
+from _accounting_fixture f
+cross join public.roles r
+where r.code = 'owner';
 
 select extensions.is(
   (select count(*)::integer from public.chart_of_accounts
@@ -114,6 +122,111 @@ select extensions.is(
   'Trial balance agrees with the contra-account ledger balance'
 );
 
+-- The seeded chart must retain its grouping hierarchy and system-account flag.
+select extensions.ok(
+  exists (
+    select 1
+    from public.chart_of_accounts leaf
+    join public.chart_of_accounts group_account
+      on group_account.company_id=leaf.company_id
+     and group_account.id=leaf.parent_account_id
+    join public.chart_of_accounts root_account
+      on root_account.company_id=group_account.company_id
+     and root_account.id=group_account.parent_account_id
+    where leaf.company_id=(select company_id from _accounting_fixture)
+      and leaf.account_code='1110'
+      and group_account.account_code='1100'
+      and root_account.account_code='1000'
+      and leaf.is_system_account
+      and group_account.is_system_account
+      and root_account.is_system_account
+  ),
+  'Seeded chart preserves parent hierarchy and marks default accounts as system accounts'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.trial_balance
+   where company_id=(select company_id from _accounting_fixture)),
+  (select count(*)::integer from public.chart_of_accounts
+   where company_id=(select company_id from _accounting_fixture)),
+  'Trial balance includes every chart account, including accounts without activity'
+);
+
+select extensions.is(
+  (select total_debits + total_credits + closing_balance
+   from public.trial_balance
+   where company_id=(select company_id from _accounting_fixture)
+     and account_code='1130'),
+  0::numeric,
+  'An account with no posted activity appears with zero debit, credit and balance'
+);
+
+select extensions.is(
+  (select sum(total_debits) from public.trial_balance
+   where company_id=(select company_id from _accounting_fixture)),
+  (select sum(total_credits) from public.trial_balance
+   where company_id=(select company_id from _accounting_fixture)),
+  'Trial balance gross debit and credit totals agree to the posted general ledger'
+);
+
+select extensions.is(
+  (
+    select
+      sum(case
+        when normal_balance='debit' and closing_balance > 0 then closing_balance
+        when normal_balance='credit' and closing_balance < 0 then -closing_balance
+        else 0 end)
+    from public.trial_balance
+    where company_id=(select company_id from _accounting_fixture)
+  ),
+  (
+    select
+      sum(case
+        when normal_balance='credit' and closing_balance > 0 then closing_balance
+        when normal_balance='debit' and closing_balance < 0 then -closing_balance
+        else 0 end)
+    from public.trial_balance
+    where company_id=(select company_id from _accounting_fixture)
+  ),
+  'Debit-normal and credit-normal closing balances produce equal debit and credit trial balance columns'
+);
+
+select extensions.ok(
+  not exists (
+    select 1
+    from public.trial_balance t
+    left join (
+      select company_id, account_id, sum(debit) as total_debits,
+             sum(credit) as total_credits
+      from public.general_ledger
+      where company_id=(select company_id from _accounting_fixture)
+      group by company_id, account_id
+    ) l on l.company_id=t.company_id and l.account_id=t.account_id
+    where t.company_id=(select company_id from _accounting_fixture)
+      and (
+        t.total_debits <> coalesce(l.total_debits,0)
+        or t.total_credits <> coalesce(l.total_credits,0)
+      )
+  ),
+  'Every trial balance account reconciles to its general-ledger debit and credit totals'
+);
+
+select extensions.ok(
+  not exists (
+    select 1
+    from public.trial_balance t
+    join public.account_balances b
+      on b.company_id=t.company_id and b.account_id=t.account_id
+    where t.company_id=(select company_id from _accounting_fixture)
+      and (
+        t.total_debits <> b.total_debits
+        or t.total_credits <> b.total_credits
+        or t.closing_balance <> b.balance
+      )
+  ),
+  'Account balances and trial balance agree for every account with posted activity'
+);
+
 -- Add the linked opposite entry and mark the original as reversed. Both remain
 -- in the immutable general ledger and net to zero.
 insert into public.journal_entries (
@@ -175,6 +288,47 @@ select extensions.is(
   0::numeric,
   'Trial balance reflects the net-zero reversal'
 );
+
+-- Verify system accounts cannot be deactivated through the authenticated Data API.
+-- Store fixture identifiers in transaction-local settings before switching roles;
+-- the authenticated role should not need access to the test's temporary fixture table.
+select set_config(
+  'request.jwt.claim.sub',
+  (select user_id::text from _accounting_fixture),
+  true
+);
+select set_config(
+  'test.accounting_company_id',
+  (select company_id::text from _accounting_fixture),
+  true
+);
+set local role authenticated;
+
+-- PostgreSQL requires a data-modifying statement to be top-level, so issue the
+-- attempted update directly and assert the protected row remains unchanged.
+update public.chart_of_accounts
+set is_active=false
+where company_id=current_setting('test.accounting_company_id')::uuid
+  and account_code='1110';
+
+select extensions.is(
+  (select count(*)::integer from public.chart_of_accounts
+   where company_id=current_setting('test.accounting_company_id')::uuid
+     and account_code='1110'
+     and not is_active),
+  0,
+  'An authenticated owner cannot deactivate a seeded system account'
+);
+
+select extensions.is(
+  (select is_active from public.chart_of_accounts
+   where company_id=current_setting('test.accounting_company_id')::uuid
+     and account_code='1110'),
+  true,
+  'A seeded system account remains active after a blocked update'
+);
+
+reset role;
 
 select * from extensions.finish();
 rollback;
