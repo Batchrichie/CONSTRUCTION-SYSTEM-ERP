@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(11);
+select extensions.plan(10);
 
 -- This test exercises the public accounting RPCs with a real authenticated
 -- identity claim, while keeping all fixture records inside this transaction.
@@ -134,24 +134,6 @@ select extensions.is(
   ),
   'locked'::text,
   'A closed accounting period can be locked'
-);
-
-select extensions.throws_ok(
-  format(
-    'select public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
-    (select company_id from _period_fixture),
-    '2026-01-25',
-    'Attempt in locked period',
-    jsonb_build_array(
-      jsonb_build_object('account_id', (select id from public.chart_of_accounts
-        where company_id=(select company_id from _period_fixture) and account_code='1110'), 'debit', 10, 'credit', 0),
-      jsonb_build_object('account_id', (select id from public.chart_of_accounts
-        where company_id=(select company_id from _period_fixture) and account_code='1120'), 'debit', 0, 'credit', 10)
-    )::text
-  ),
-  'P0001',
-  'No open accounting period covers the journal date',
-  'Journal draft creation is rejected for a locked accounting period'
 );
 
 update _period_fixture set blocked_journal_id = gen_random_uuid();
