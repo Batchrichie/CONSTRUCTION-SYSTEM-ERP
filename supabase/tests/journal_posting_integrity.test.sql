@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(21);
+select extensions.plan(27);
 
 -- Exercise the public journal RPCs using authenticated JWT claims. All fixtures
 -- are transaction-scoped and rolled back at the end of the test.
@@ -15,6 +15,7 @@ create temporary table _journal_fixture (
   cash_account_id uuid,
   bank_account_id uuid,
   journal_id uuid,
+  atomic_journal_id uuid,
   restricted_journal_id uuid
 ) on commit drop;
 
@@ -196,6 +197,90 @@ select extensions.throws_ok(
   'Each journal line must have either a positive debit or a positive credit, not both (line 1)',
   'A journal line cannot contain both a debit and a credit'
 );
+
+-- Force the posting audit write to fail. The complete posting statement,
+-- including the journal update and number-counter increment, must roll back.
+update _journal_fixture
+set atomic_journal_id = public.create_journal_draft(
+  company_id,
+  date '2026-01-15',
+  'Atomic posting rollback test',
+  jsonb_build_array(
+    jsonb_build_object('account_id', cash_account_id, 'debit', 40, 'credit', 0),
+    jsonb_build_object('account_id', bank_account_id, 'debit', 0, 'credit', 40)
+  ),
+  'ATOMIC-POSTING-REFERENCE',
+  'atomic-posting-rollback-key'
+);
+
+create function pg_temp.reject_journal_post_audit()
+returns trigger
+language plpgsql
+as $function$
+begin
+  if new.action = 'journal.posted' then
+    raise exception 'forced audit failure';
+  end if;
+  return new;
+end;
+$function$;
+
+create trigger test_reject_journal_post_audit
+before insert on public.audit_logs
+for each row execute function pg_temp.reject_journal_post_audit();
+
+select extensions.throws_ok(
+  format(
+    'select public.post_journal_entry(%L::uuid)',
+    (select atomic_journal_id from _journal_fixture)
+  ),
+  'P0001',
+  'forced audit failure',
+  'A failed posting audit write aborts the entire journal-posting operation'
+);
+
+select extensions.is(
+  (select status from public.journal_entries
+   where id = (select atomic_journal_id from _journal_fixture)),
+  'draft'::text,
+  'A failed posting leaves the journal in draft status'
+);
+
+select extensions.is(
+  (select journal_number from public.journal_entries
+   where id = (select atomic_journal_id from _journal_fixture)),
+  null::text,
+  'A failed posting does not retain an assigned journal number'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.general_ledger
+   where company_id = (select company_id from _journal_fixture)
+     and journal_entry_id = (select atomic_journal_id from _journal_fixture)),
+  0,
+  'A failed posting does not expose any journal lines in the general ledger'
+);
+
+select extensions.is(
+  (select count(*)::integer from private.journal_number_counters
+   where company_id = (select company_id from _journal_fixture)
+     and fiscal_year_id = (select fiscal_year_id from _journal_fixture)),
+  0,
+  'A failed posting rolls back its journal-number counter increment'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.audit_logs
+   where company_id = (select company_id from _journal_fixture)
+     and entity_table = 'journal_entries'
+     and entity_id = (select atomic_journal_id::text from _journal_fixture)
+     and action = 'journal.posted'),
+  0,
+  'A failed posting leaves no partial posting audit record'
+);
+
+drop trigger test_reject_journal_post_audit on public.audit_logs;
+drop function pg_temp.reject_journal_post_audit();
 
 select extensions.is(
   public.post_journal_entry((select journal_id from _journal_fixture)),
