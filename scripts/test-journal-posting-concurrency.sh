@@ -93,7 +93,7 @@ SQL
 
 JOURNAL_ID="$(psql "$DB_URL" -X -Atq -v ON_ERROR_STOP=1 <<SQL
 SET ROLE authenticated;
-SELECT set_config('request.jwt.claim.sub', '$USER_ID', false) AS jwt_sub \\gset
+SELECT set_config('request.jwt.claim.sub', '$USER_ID', false) AS jwt_sub \gset
 SELECT public.create_journal_draft(
   '$COMPANY_ID',
   date '2026-01-15',
