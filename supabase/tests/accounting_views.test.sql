@@ -321,7 +321,7 @@ select extensions.is(
 
 select extensions.is(
   (select is_active from public.chart_of_accounts
-   where company_id=(select company_id from _accounting_fixture)
+   where company_id=current_setting('test.accounting_company_id')::uuid
      and account_code='1110'),
   true,
   'A seeded system account remains active after a blocked update'
