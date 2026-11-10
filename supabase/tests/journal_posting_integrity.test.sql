@@ -15,6 +15,7 @@ create temporary table _journal_fixture (
   cash_account_id uuid,
   bank_account_id uuid,
   journal_id uuid,
+  atomic_journal_id uuid,
   restricted_journal_id uuid
 ) on commit drop;
 
