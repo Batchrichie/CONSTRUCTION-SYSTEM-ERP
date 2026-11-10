@@ -47,7 +47,7 @@ where r.code = 'owner';
 
 select extensions.is(
   (select count(*)::integer from public.chart_of_accounts
-   where company_id=current_setting('test.accounting_company_id')::uuid
+   where company_id=(select company_id from _accounting_fixture)
      and account_code='1110'),
   1,
   'Default chart seeding creates leaf accounts beneath newly created grouping accounts'
