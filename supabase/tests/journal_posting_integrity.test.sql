@@ -300,7 +300,7 @@ select extensions.throws_ok(
     (select journal_id from _activation_fixture)
   ),
   'P0001',
-  'A journal line uses an inactive or non-postable account',
+  'A journal line uses an inactive, non-postable or restricted account',
   'Posting rejects a draft whose account was deactivated after draft creation'
 );
 
