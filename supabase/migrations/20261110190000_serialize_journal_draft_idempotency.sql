@@ -140,14 +140,6 @@ begin
       raise exception 'Invalid account_id, debit or credit on journal line %', v_line_number
         using errcode = '22023';
     end;
-      v_account_id := (v_line->>'account_id')::uuid;
-      v_debit := coalesce(nullif(v_line->>'debit','')::numeric,0);
-      v_credit := coalesce(nullif(v_line->>'credit','')::numeric,0);
-    exception when others then
-      raise exception 'Invalid account_id, debit or credit on journal line %', v_line_number
-        using errcode = '22023';
-    end;
-
     if v_debit < 0 or v_credit < 0
        or not ((v_debit > 0 and v_credit = 0) or (v_credit > 0 and v_debit = 0)) then
       raise exception 'Each journal line must have either a positive debit or a positive credit, not both (line %)', v_line_number
