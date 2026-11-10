@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(18);
+select extensions.plan(17);
 
 -- Isolated fixture: this test runs on a freshly migrated local Supabase database.
 create temporary table _accounting_fixture (
