@@ -121,6 +121,121 @@ begin
   for v_line in select value from jsonb_array_elements(p_lines)
   loop
     v_line_number := v_line_number + 1;
+    if nullif(v_line->>'debit','') is not null
+       and (v_line->>'debit') !~ '^[+-]?(?:[0-9]+(?:[.][0-9]{1,4})?|[.][0-9]{1,4})
+      v_debit := coalesce(nullif(v_line->>'debit','')::numeric,0);
+      v_credit := coalesce(nullif(v_line->>'credit','')::numeric,0);
+    exception when others then
+      raise exception 'Invalid account_id, debit or credit on journal line %', v_line_number
+        using errcode = '22023';
+    end;
+
+    if v_debit < 0 or v_credit < 0
+       or not ((v_debit > 0 and v_credit = 0) or (v_credit > 0 and v_debit = 0)) then
+      raise exception 'Each journal line must have either a positive debit or a positive credit, not both (line %)', v_line_number
+        using errcode = '22023';
+    end if;
+
+    if not exists (
+      select 1 from public.chart_of_accounts a
+      where a.company_id = p_company_id
+        and a.id = v_account_id
+        and a.is_active
+        and a.is_postable
+        and a.allow_manual_journal
+    ) then
+      raise exception 'Account on line % is unavailable for manual journal posting', v_line_number
+        using errcode = '22023';
+    end if;
+
+    insert into public.journal_lines (
+      company_id, journal_entry_id, account_id, line_number,
+      description, debit, credit
+    ) values (
+      p_company_id, v_entry_id, v_account_id, v_line_number,
+      nullif(btrim(v_line->>'description'),''), v_debit, v_credit
+    );
+
+    v_total_debit := v_total_debit + v_debit;
+    v_total_credit := v_total_credit + v_credit;
+  end loop;
+
+  if v_total_debit <= 0 or v_total_debit <> v_total_credit then
+    raise exception 'Journal is not balanced. Debits: %, credits: %', v_total_debit, v_total_credit
+      using errcode = '23514';
+  end if;
+
+  update public.journal_entries
+  set total_debit = v_total_debit,
+      total_credit = v_total_credit,
+      updated_at = now()
+  where id = v_entry_id and company_id = p_company_id;
+
+  return v_entry_id;
+end;
+$$;
+ then
+      raise exception 'Debit amounts must not exceed 4 decimal places (line %)', v_line_number
+        using errcode = '22023';
+    end if;
+    if nullif(v_line->>'credit','') is not null
+       and (v_line->>'credit') !~ '^[+-]?(?:[0-9]+(?:[.][0-9]{1,4})?|[.][0-9]{1,4})
+      v_debit := coalesce(nullif(v_line->>'debit','')::numeric,0);
+      v_credit := coalesce(nullif(v_line->>'credit','')::numeric,0);
+    exception when others then
+      raise exception 'Invalid account_id, debit or credit on journal line %', v_line_number
+        using errcode = '22023';
+    end;
+
+    if v_debit < 0 or v_credit < 0
+       or not ((v_debit > 0 and v_credit = 0) or (v_credit > 0 and v_debit = 0)) then
+      raise exception 'Each journal line must have either a positive debit or a positive credit, not both (line %)', v_line_number
+        using errcode = '22023';
+    end if;
+
+    if not exists (
+      select 1 from public.chart_of_accounts a
+      where a.company_id = p_company_id
+        and a.id = v_account_id
+        and a.is_active
+        and a.is_postable
+        and a.allow_manual_journal
+    ) then
+      raise exception 'Account on line % is unavailable for manual journal posting', v_line_number
+        using errcode = '22023';
+    end if;
+
+    insert into public.journal_lines (
+      company_id, journal_entry_id, account_id, line_number,
+      description, debit, credit
+    ) values (
+      p_company_id, v_entry_id, v_account_id, v_line_number,
+      nullif(btrim(v_line->>'description'),''), v_debit, v_credit
+    );
+
+    v_total_debit := v_total_debit + v_debit;
+    v_total_credit := v_total_credit + v_credit;
+  end loop;
+
+  if v_total_debit <= 0 or v_total_debit <> v_total_credit then
+    raise exception 'Journal is not balanced. Debits: %, credits: %', v_total_debit, v_total_credit
+      using errcode = '23514';
+  end if;
+
+  update public.journal_entries
+  set total_debit = v_total_debit,
+      total_credit = v_total_credit,
+      updated_at = now()
+  where id = v_entry_id and company_id = p_company_id;
+
+  return v_entry_id;
+end;
+$$;
+ then
+      raise exception 'Credit amounts must not exceed 4 decimal places (line %)', v_line_number
+        using errcode = '22023';
+    end if;
+
     begin
       v_account_id := (v_line->>'account_id')::uuid;
       v_debit := coalesce(nullif(v_line->>'debit','')::numeric,0);
