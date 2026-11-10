@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(19);
+select extensions.plan(21);
 
 -- Exercise the public journal RPCs using authenticated JWT claims. All fixtures
 -- are transaction-scoped and rolled back at the end of the test.
@@ -248,6 +248,65 @@ select set_config(
   (select owner_id::text from _journal_fixture),
   true
 );
+
+-- An account disabled before draft creation must not be selectable.
+update public.chart_of_accounts
+set is_active = false
+where id = (select bank_account_id from _journal_fixture);
+
+select extensions.throws_ok(
+  format(
+    'select public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
+    (select company_id from _journal_fixture),
+    '2026-01-18',
+    'Inactive account draft',
+    jsonb_build_array(
+      jsonb_build_object('account_id',(select cash_account_id from _journal_fixture),'debit',10,'credit',0),
+      jsonb_build_object('account_id',(select bank_account_id from _journal_fixture),'debit',0,'credit',10)
+    )::text
+  ),
+  '22023',
+  'Account on line 2 is unavailable for manual journal posting',
+  'An inactive account cannot be used when creating a journal draft'
+);
+
+update public.chart_of_accounts
+set is_active = true
+where id = (select bank_account_id from _journal_fixture);
+
+-- A valid draft must be rechecked if its account is disabled before posting.
+create temporary table _activation_fixture (
+  journal_id uuid not null
+) on commit drop;
+
+insert into _activation_fixture
+select public.create_journal_draft(
+  (select company_id from _journal_fixture),
+  date '2026-01-19',
+  'Account deactivation before posting',
+  jsonb_build_array(
+    jsonb_build_object('account_id',(select cash_account_id from _journal_fixture),'debit',15,'credit',0),
+    jsonb_build_object('account_id',(select bank_account_id from _journal_fixture),'debit',0,'credit',15)
+  )
+);
+
+update public.chart_of_accounts
+set is_active = false
+where id = (select bank_account_id from _journal_fixture);
+
+select extensions.throws_ok(
+  format(
+    'select public.post_journal_entry(%L::uuid)',
+    (select journal_id from _activation_fixture)
+  ),
+  'P0001',
+  'A journal line uses an inactive or non-postable account',
+  'Posting rejects a draft whose account was deactivated after draft creation'
+);
+
+update public.chart_of_accounts
+set is_active = true
+where id = (select bank_account_id from _journal_fixture);
 
 select extensions.is(
   public.reverse_journal_entry(
