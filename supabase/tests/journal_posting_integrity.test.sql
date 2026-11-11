@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(27);
+select extensions.plan(35);
 
 -- Exercise the public journal RPCs using authenticated JWT claims. All fixtures
 -- are transaction-scoped and rolled back at the end of the test.
@@ -482,6 +482,42 @@ select extensions.throws_ok(
   'P0001',
   'Only a posted journal entry can be reversed',
   'A journal cannot be reversed more than once'
+);
+
+
+-- Journal tables are read-only through direct authenticated table access.
+-- All journal writes must go through the controlled accounting RPCs.
+select extensions.ok(
+  has_table_privilege('authenticated', 'public.journal_entries', 'SELECT'),
+  'Authenticated users retain read access to journal headers'
+);
+select extensions.ok(
+  has_table_privilege('authenticated', 'public.journal_lines', 'SELECT'),
+  'Authenticated users retain read access to journal lines'
+);
+select extensions.ok(
+  not has_table_privilege('authenticated', 'public.journal_entries', 'INSERT'),
+  'Authenticated users cannot directly insert journal headers'
+);
+select extensions.ok(
+  not has_table_privilege('authenticated', 'public.journal_entries', 'UPDATE'),
+  'Authenticated users cannot directly update journal headers'
+);
+select extensions.ok(
+  not has_table_privilege('authenticated', 'public.journal_entries', 'DELETE'),
+  'Authenticated users cannot directly delete journal headers'
+);
+select extensions.ok(
+  not has_table_privilege('authenticated', 'public.journal_lines', 'INSERT'),
+  'Authenticated users cannot directly insert journal lines'
+);
+select extensions.ok(
+  not has_table_privilege('authenticated', 'public.journal_lines', 'UPDATE'),
+  'Authenticated users cannot directly update journal lines'
+);
+select extensions.ok(
+  not has_table_privilege('authenticated', 'public.journal_lines', 'DELETE'),
+  'Authenticated users cannot directly delete journal lines'
 );
 
 select * from extensions.finish();
