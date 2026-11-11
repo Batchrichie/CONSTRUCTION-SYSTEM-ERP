@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(10);
+select extensions.plan(19);
 
 -- This test exercises the public accounting RPCs with a real authenticated
 -- identity claim, while keeping all fixture records inside this transaction.
@@ -180,6 +180,93 @@ select extensions.is(
   ),
   'closed'::text,
   'A fiscal year can close after all its periods are closed or locked'
+);
+
+
+-- Reject invalid lifecycle transitions rather than silently reopening periods.
+select extensions.throws_ok(
+  format(
+    'select public.transition_fiscal_year_status(%L::uuid,%L)',
+    (select fiscal_year_id from _period_fixture),
+    'open'
+  ),
+  'P0001',
+  'Invalid fiscal-year status transition: open to open',
+  'A fiscal year cannot be opened twice'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.transition_accounting_period_status(%L::uuid,%L)',
+    (select period_id from _period_fixture),
+    'open'
+  ),
+  'P0001',
+  'Invalid accounting-period status transition: locked to open',
+  'A locked accounting period cannot be reopened'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.create_fiscal_year(%L::uuid,%L,%L::date,%L::date)',
+    (select company_id from _period_fixture),
+    'OVERLAP-' || left((select company_id::text from _period_fixture),8),
+    '2026-06-01',
+    '2027-05-31'
+  ),
+  'P0001',
+  'Fiscal years cannot overlap within a company',
+  'Overlapping fiscal years are rejected'
+);
+
+-- Lifecycle data is read-only through direct authenticated table writes;
+-- callers must use the permission-checked RPCs.
+select extensions.ok(
+  not has_table_privilege('authenticated','public.fiscal_years','INSERT')
+  and not has_table_privilege('authenticated','public.fiscal_years','UPDATE'),
+  'Authenticated users cannot directly insert or update fiscal years'
+);
+
+select extensions.ok(
+  not has_table_privilege('authenticated','public.accounting_periods','INSERT')
+  and not has_table_privilege('authenticated','public.accounting_periods','UPDATE'),
+  'Authenticated users cannot directly insert or update accounting periods'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.audit_logs
+   where company_id=(select company_id from _period_fixture)
+     and actor_user_id=(select user_id from _period_fixture)
+     and action in ('fiscal_year.created','fiscal_year.status_changed',
+                    'accounting_period.created','accounting_period.status_changed')),
+  5,
+  'Fiscal-year and accounting-period creation and status changes are audited'
+);
+
+select extensions.ok(
+  exists (
+    select 1 from public.audit_logs
+    where company_id=(select company_id from _period_fixture)
+      and actor_user_id=(select user_id from _period_fixture)
+      and action='accounting_period.status_changed'
+      and entity_id=(select period_id::text from _period_fixture)
+      and old_values->>'status'='closed'
+      and new_values->>'status'='locked'
+  ),
+  'The period-lock audit records the actor and previous and new statuses'
+);
+
+select extensions.ok(
+  exists (
+    select 1 from public.audit_logs
+    where company_id=(select company_id from _period_fixture)
+      and actor_user_id=(select user_id from _period_fixture)
+      and action='fiscal_year.status_changed'
+      and entity_id=(select fiscal_year_id::text from _period_fixture)
+      and old_values->>'status'='open'
+      and new_values->>'status'='closed'
+  ),
+  'The fiscal-year close audit records the actor and previous and new statuses'
 );
 
 select * from extensions.finish();
