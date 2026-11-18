@@ -191,8 +191,8 @@ select extensions.throws_ok(
     'open'
   ),
   'P0001',
-  'Invalid fiscal-year status transition: open to open',
-  'A fiscal year cannot be opened twice'
+  'Invalid fiscal-year status transition: closed to open',
+  'A closed fiscal year cannot be reopened'
 );
 
 select extensions.throws_ok(
