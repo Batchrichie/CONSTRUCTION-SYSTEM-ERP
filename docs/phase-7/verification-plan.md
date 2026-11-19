@@ -24,17 +24,19 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 - [x] Verify fiscal year and period creation, opening, closing and locking (PR #35 and PR #46; creation defaults, authorized opening/closing/locking, overlap and containment rejection, draft-journal close guard, open/empty-year close guards, locked-period posting rejection, no-reopen transitions, audit trail and direct-write restrictions covered by pgTAP).
 - [x] Verify balanced draft journal creation and reject unbalanced/invalid lines (PR #48; six additional pgTAP assertions cover one-line journals, zero/negative amounts, malformed and unavailable account IDs, and absence of partial headers; existing assertions cover balanced totals, unbalanced lines and debit/credit exclusivity).
 - [x] Verify atomic posting, idempotency and duplicate submission handling (PR #33 and current CI evidence: audit-write failure rolls back journal status, number, ledger and audit; repeated post returns the existing number; concurrent draft requests with the same key return one draft; concurrent posts return one journal number and produce exactly one ledger posting, audit row and counter increment).
-- [ ] Verify closed-period posting rejection.
-- [ ] Verify reversal linkage, opposite debit/credit lines and preservation of original posted journals.
-- [ ] Reconcile trial balance to posted journal lines.
+- [x] Verify closed-period posting rejection with no side effects (PR #51; rejected posting leaves the journal in draft, assigns no number, creates no general-ledger rows or posting audit, and does not increment the journal-number counter).
+- [x] Verify reversal linkage, opposite debit/credit lines and preservation of original posted journals (PR #36 and existing journal integrity coverage; original remains present as reversed, one linked posted reversal mirrors every account and amount in the opposite direction, duplicate reversal is rejected, and audit failure rolls back atomically).
+- [x] Reconcile trial balance to posted journal lines after the actual reversal RPC (PR #52; cash and bank closing balances return to zero, total debits equal credits, and every trial-balance account reconciles to its general-ledger debit/credit totals).
 
-### 7.3 Project cost controls
+### 7.3 Project cost controls — COMPLETE (PR #38)
 
-- [ ] Verify project/contract/customer links and company boundaries.
-- [ ] Verify budget setup and cost-code validity.
-- [ ] Verify split project/overhead allocations equal the expense debit line.
-- [ ] Verify incomplete or over-allocated expense lines cannot post.
-- [ ] Verify project cost reports reconcile to attributed posted journal lines.
+- [x] Verify project/contract/customer links and company boundaries.
+- [x] Verify budget setup and cost-code validity.
+- [x] Verify split project/overhead allocations equal the expense debit line.
+- [x] Verify incomplete or over-allocated expense lines cannot post.
+- [x] Verify project cost reports reconcile to attributed posted journal lines.
+- [x] Verify project cost ledger reconciliation to posted expenses.
+- [x] Verify reversal of project costs returns project and overhead ledgers to net zero.
 
 ### 7.4 Commercial workflows
 
