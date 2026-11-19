@@ -11,9 +11,9 @@ create temporary table _iso (
 insert into _iso values(gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid());
 
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
-select owner_id,'authenticated','authenticated','iso-owner-'||owner_id::text||'@example.test','',now(),'{}','{}' from _iso
+select owner_id,'authenticated','authenticated','iso-owner-'||owner_id::text||'@example.test','',now(),'{}'::jsonb,'{}'::jsonb from _iso
 union all
-select outsider_id,'authenticated','authenticated','iso-outsider-'||outsider_id::text||'@example.test','',now(),'{}','{}' from _iso;
+select outsider_id,'authenticated','authenticated','iso-outsider-'||outsider_id::text||'@example.test','',now(),'{}'::jsonb,'{}'::jsonb from _iso;
 
 insert into public.companies(id,legal_name,display_name,base_currency,country_code,created_by)
 select company_id,'Isolation Test Company','Isolation Test','GHS','GH',owner_id from _iso;
