@@ -12,6 +12,8 @@ create temporary table _membership_access_fixture (
 insert into _membership_access_fixture
 values (gen_random_uuid(), gen_random_uuid(), gen_random_uuid());
 
+grant select on _membership_access_fixture to authenticated;
+
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data
