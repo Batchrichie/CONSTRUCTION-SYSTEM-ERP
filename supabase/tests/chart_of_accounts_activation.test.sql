@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(8);
+select extensions.plan(10);
 
 -- Account activation and manual-journal controls. All fixtures are isolated
 -- and rolled back; this test never touches the hosted development database.
@@ -120,10 +120,51 @@ select extensions.ok(
   'A seeded control account disallows manual journal entry'
 );
 
+select extensions.throws_ok(
+  format(
+    'select public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
+    (select company_id from _coa_fixture),
+    '2026-01-15',
+    'Grouping account must not be posted',
+    jsonb_build_array(
+      jsonb_build_object('account_id', (select id from public.chart_of_accounts where company_id=(select company_id from _coa_fixture) and account_code='1000'), 'debit', 25, 'credit', 0),
+      jsonb_build_object('account_id', (select cash_id from _coa_fixture), 'debit', 0, 'credit', 25)
+    )::text
+  ),
+  '22023',
+  'Account on line 1 is unavailable for manual journal posting',
+  'A non-postable grouping account is rejected during draft creation'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
+    (select company_id from _coa_fixture),
+    '2026-01-15',
+    'Control account must not be manually posted',
+    jsonb_build_array(
+      jsonb_build_object('account_id', (select id from public.chart_of_accounts where company_id=(select company_id from _coa_fixture) and account_code='1140'), 'debit', 25, 'credit', 0),
+      jsonb_build_object('account_id', (select cash_id from _coa_fixture), 'debit', 0, 'credit', 25)
+    )::text
+  ),
+  '22023',
+  'Account on line 1 is unavailable for manual journal posting',
+  'A control account that disallows manual journals is rejected'
+);
+
 update public.chart_of_accounts
 set is_active = false
 where company_id = (select company_id from _coa_fixture)
   and account_code = '6911';
+
+select extensions.ok(
+  exists (
+    select 1 from public.chart_of_accounts
+    where company_id = (select company_id from _coa_fixture)
+      and account_code = '6911' and not is_active
+  ),
+  'An authorised owner can deactivate an ordinary chart account'
+);
 
 select extensions.throws_ok(
   format(
@@ -165,6 +206,13 @@ select extensions.throws_ok(
   'P0001',
   'A journal line uses an inactive or non-postable account',
   'Posting rechecks account activation after the draft was created'
+);
+
+select extensions.is(
+  (select status from public.journal_entries
+   where id = (select draft_id from _coa_fixture)),
+  'draft'::text,
+  'A failed activation recheck leaves the journal unposted'
 );
 
 select set_config(
