@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(48);
+select extensions.plan(52);
 
 -- Exercise the public journal RPCs using authenticated JWT claims. All fixtures
 -- are transaction-scoped and rolled back at the end of the test.
@@ -562,6 +562,50 @@ select extensions.is(
      and account_code = '1120'),
   0::numeric,
   'The original and reversing bank entries net to zero'
+);
+
+select extensions.is(
+  (select closing_balance from public.trial_balance
+   where company_id=(select company_id from _journal_fixture)
+     and account_code='1110'),
+  0::numeric,
+  'The actual reversal RPC leaves the cash trial-balance closing balance at zero'
+);
+
+select extensions.is(
+  (select closing_balance from public.trial_balance
+   where company_id=(select company_id from _journal_fixture)
+     and account_code='1120'),
+  0::numeric,
+  'The actual reversal RPC leaves the bank trial-balance closing balance at zero'
+);
+
+select extensions.is(
+  (select sum(total_debits) from public.trial_balance
+   where company_id=(select company_id from _journal_fixture)),
+  (select sum(total_credits) from public.trial_balance
+   where company_id=(select company_id from _journal_fixture)),
+  'Trial balance debit and credit totals remain equal after the actual reversal RPC'
+);
+
+select extensions.ok(
+  not exists (
+    select 1
+    from public.trial_balance t
+    left join (
+      select company_id, account_id, sum(debit) as total_debits,
+             sum(credit) as total_credits
+      from public.general_ledger
+      where company_id=(select company_id from _journal_fixture)
+      group by company_id, account_id
+    ) l on l.company_id=t.company_id and l.account_id=t.account_id
+    where t.company_id=(select company_id from _journal_fixture)
+      and (
+        t.total_debits<>coalesce(l.total_debits,0)
+        or t.total_credits<>coalesce(l.total_credits,0)
+      )
+  ),
+  'Trial balance debit and credit totals reconcile to every general-ledger account after the actual reversal RPC'
 );
 
 select extensions.throws_ok(
