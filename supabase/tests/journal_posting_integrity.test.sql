@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(35);
+select extensions.plan(42);
 
 -- Exercise the public journal RPCs using authenticated JWT claims. All fixtures
 -- are transaction-scoped and rolled back at the end of the test.
@@ -16,7 +16,9 @@ create temporary table _journal_fixture (
   bank_account_id uuid,
   journal_id uuid,
   atomic_journal_id uuid,
-  restricted_journal_id uuid
+  restricted_journal_id uuid,
+  audit_failure_journal_id uuid,
+  reversal_validation_journal_id uuid
 ) on commit drop;
 
 insert into _journal_fixture (
@@ -484,6 +486,157 @@ select extensions.throws_ok(
   'A journal cannot be reversed more than once'
 );
 
+
+-- Dedicated posted entry for validation checks: the original journal above
+-- has already been reversed by the successful-reversal regression.
+update _journal_fixture
+set reversal_validation_journal_id = public.create_journal_draft(
+  company_id,
+  date '2026-01-21',
+  'Reversal validation test',
+  jsonb_build_array(
+    jsonb_build_object('account_id', cash_account_id, 'debit', 20, 'credit', 0),
+    jsonb_build_object('account_id', bank_account_id, 'debit', 0, 'credit', 20)
+  ),
+  'REVERSAL-VALIDATION-REFERENCE',
+  'reversal-validation-key'
+);
+
+select public.post_journal_entry(
+  (select reversal_validation_journal_id from _journal_fixture)
+);
+
+-- Reversal validation and transaction atomicity regressions.
+select extensions.throws_ok(
+  format(
+    'select public.reverse_journal_entry(%L::uuid,null::date,%L)',
+    (select reversal_validation_journal_id from _journal_fixture),
+    'Missing reversal date'
+  ),
+  '22023',
+  'A reversal date and reason are required',
+  'A reversal without a date is rejected'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.reverse_journal_entry(%L::uuid,%L::date,%L)',
+    (select reversal_validation_journal_id from _journal_fixture),
+    '2026-01-21',
+    '  '
+  ),
+  '22023',
+  'A reversal date and reason are required',
+  'A reversal with a blank reason is rejected'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  (select viewer_id::text from _journal_fixture),
+  true
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.reverse_journal_entry(%L::uuid,%L::date,%L)',
+    (select restricted_journal_id from _journal_fixture),
+    '2026-01-21',
+    'Viewer must not reverse'
+  ),
+  '42501',
+  'You do not have permission to reverse journals for this company',
+  'A read-only company member cannot reverse a journal'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  (select owner_id::text from _journal_fixture),
+  true
+);
+
+update public.accounting_periods
+set status='locked'
+where id=(select period_id from _journal_fixture);
+
+select extensions.throws_ok(
+  format(
+    'select public.reverse_journal_entry(%L::uuid,%L::date,%L)',
+    (select reversal_validation_journal_id from _journal_fixture),
+    '2026-01-21',
+    'Closed period reversal'
+  ),
+  'P0001',
+  'No open accounting period covers the reversal date',
+  'A reversal cannot be posted into a locked accounting period'
+);
+
+update public.accounting_periods
+set status='open'
+where id=(select period_id from _journal_fixture);
+
+-- Force the final reversal audit write to fail. The original status, reversal
+-- journal, ledger rows, and nested posting work must all roll back together.
+update _journal_fixture
+set audit_failure_journal_id = public.create_journal_draft(
+  company_id,
+  date '2026-01-22',
+  'Reversal audit atomicity test',
+  jsonb_build_array(
+    jsonb_build_object('account_id', cash_account_id, 'debit', 30, 'credit', 0),
+    jsonb_build_object('account_id', bank_account_id, 'debit', 0, 'credit', 30)
+  ),
+  'REVERSAL-AUDIT-REFERENCE',
+  'reversal-audit-atomicity-key'
+);
+
+select public.post_journal_entry(
+  (select audit_failure_journal_id from _journal_fixture)
+);
+
+create function pg_temp.reject_journal_reversal_audit()
+returns trigger
+language plpgsql
+as $function$
+begin
+  if new.action = 'journal.reversed' then
+    raise exception 'forced reversal audit failure';
+  end if;
+  return new;
+end;
+$function$;
+
+create trigger test_reject_journal_reversal_audit
+before insert on public.audit_logs
+for each row execute function pg_temp.reject_journal_reversal_audit();
+
+select extensions.throws_ok(
+  format(
+    'select public.reverse_journal_entry(%L::uuid,%L::date,%L)',
+    (select audit_failure_journal_id from _journal_fixture),
+    '2026-01-23',
+    'Atomicity regression'
+  ),
+  'P0001',
+  'forced reversal audit failure',
+  'A failed reversal audit aborts the complete reversal operation'
+);
+
+select extensions.is(
+  (select status from public.journal_entries
+   where id=(select audit_failure_journal_id from _journal_fixture)),
+  'posted'::text,
+  'A failed reversal leaves the original journal posted'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.journal_entries
+   where reversal_of_journal_id=(select audit_failure_journal_id from _journal_fixture)),
+  0,
+  'A failed reversal leaves no linked reversing journal'
+);
+
+drop trigger test_reject_journal_reversal_audit on public.audit_logs;
+drop function pg_temp.reject_journal_reversal_audit();
 
 -- Journal tables are read-only through direct authenticated table access.
 -- All journal writes must go through the controlled accounting RPCs.
