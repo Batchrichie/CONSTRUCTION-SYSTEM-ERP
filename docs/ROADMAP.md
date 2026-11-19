@@ -34,7 +34,7 @@ Phase 7 is the release gate proving the foundations work together under authenti
 
 ### 7.2 Accounting controls — IN PROGRESS
 
-1. Chart-of-account seed integrity and account activation/deactivation rules — audit and test coverage.
+1. Chart-of-account seed integrity and account activation/deactivation rules — complete (PR #44; 10 pgTAP assertions cover seeded flags, inactive/non-postable/manual-restricted accounts, posting-time revalidation and viewer permissions).
 2. Fiscal-year and period creation, opening, closing and locking — regression coverage added; reconcile all lifecycle criteria against tests.
 3. Balanced journal draft creation; reject unbalanced and invalid lines — audit and test coverage.
 4. Atomic posting, idempotency and duplicate submission handling — regression/concurrency coverage added in PR #33; verify acceptance coverage.
