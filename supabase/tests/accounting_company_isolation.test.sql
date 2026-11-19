@@ -39,7 +39,7 @@ select set_config('test.outsider_id',(select outsider_id::text from _iso),true);
 set local role authenticated;
 
 select set_config('request.jwt.claim.sub',current_setting('test.owner_id'),true);
-select extensions.is((select count(*)::integer from public.chart_of_accounts where company_id=current_setting('test.company_id')::uuid),(select count(*)::integer from public.chart_of_accounts where company_id=current_setting('test.company_id')::uuid),'Owner can read the company chart of accounts');
+select extensions.ok((select count(*) > 0 from public.chart_of_accounts where company_id=current_setting('test.company_id')::uuid),'Owner can read the company chart of accounts');
 select extensions.is((select count(*)::integer from public.fiscal_years where company_id=current_setting('test.company_id')::uuid),1,'Owner can read the fiscal year');
 select extensions.is((select count(*)::integer from public.accounting_periods where company_id=current_setting('test.company_id')::uuid),1,'Owner can read the accounting period');
 select extensions.is((select count(*)::integer from public.journal_entries where company_id=current_setting('test.company_id')::uuid),1,'Owner can read the journal header');
