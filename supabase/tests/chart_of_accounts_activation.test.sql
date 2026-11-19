@@ -13,6 +13,7 @@ create temporary table _coa_fixture (
   cash_id uuid,
   bank_id uuid
 ) on commit drop;
+grant select, update on _coa_fixture to authenticated;
 
 insert into _coa_fixture(company_id, owner_id, viewer_id)
 values (gen_random_uuid(), gen_random_uuid(), gen_random_uuid());
