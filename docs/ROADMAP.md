@@ -1,7 +1,7 @@
 # Construction System ERP — Delivery Roadmap
 
 Last updated: 2026-11-19  
-Baseline: `main` at `904cceaa969b4a0628ef2d586351e7fb82c196f6`
+Baseline: `main` at `3014404ad1151b4967dc0655e9b790f4f932780a`
 
 This is the working delivery plan. Work through one phase at a time, in order. A phase is complete only when its acceptance criteria are implemented, automated checks pass, the reviewed PR is merged, and any required manual release checks are explicitly recorded.
 
@@ -36,7 +36,7 @@ Phase 7 is the release gate proving the foundations work together under authenti
 
 1. Chart-of-account seed integrity and account activation/deactivation rules — complete (PR #44; 10 pgTAP assertions cover seeded flags, inactive/non-postable/manual-restricted accounts, posting-time revalidation and viewer permissions).
 2. Fiscal-year and period creation, opening, closing and locking — complete (PR #35 and PR #46; 20 lifecycle assertions cover creation, authorization, valid/invalid transitions, overlap/containment, draft-journal and empty/open-period close guards, locked-period posting, audit trail and direct-write restrictions).
-3. Balanced journal draft creation; reject unbalanced and invalid lines — audit and test coverage.
+3. Balanced journal draft creation; reject unbalanced and invalid lines — complete (PR #48; six additional pgTAP assertions cover minimum line count, zero/negative amounts, malformed/unavailable accounts and no partial header; existing coverage verifies balanced totals and unbalanced lines).
 4. Atomic posting, idempotency and duplicate submission handling — regression/concurrency coverage added in PR #33; verify acceptance coverage.
 5. Closed-period posting rejection — audit and test coverage.
 6. Reversal linkage, opposite debit/credit lines, preservation of original posted journals and atomic failure — regression coverage added in PR #36; verify acceptance coverage.
@@ -44,7 +44,7 @@ Phase 7 is the release gate proving the foundations work together under authenti
 
 Do not repeat controls already proven. First map each acceptance criterion to a current test and close only genuine gaps.
 
-**Next 7.2 task:** Step 3 — balanced journal draft creation and rejection of unbalanced or invalid journal lines.
+**Next 7.2 task:** Step 4 — verify atomic posting, idempotency and duplicate submission handling against the acceptance criteria. Existing PR #33 concurrency tests are a starting point; identify any remaining gaps before adding tests.
 
 ### 7.3 Project cost controls — COMPLETE
 
