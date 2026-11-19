@@ -300,8 +300,8 @@ select extensions.is(
    from public.journal_line_cost_allocations
    where company_id = (select company_id from _project_cost_fixture)
      and journal_line_id = (select expense_line_id from _project_cost_fixture)),
-  2,
-  'A single expense line can be split across multiple project allocations'
+  3,
+  'A single expense line can be split across project and overhead allocations'
 );
 
 select public.post_journal_entry(
