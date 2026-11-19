@@ -281,7 +281,7 @@ select extensions.is(
      and actor_user_id=(select user_id from _period_fixture)
      and action in ('fiscal_year.created','fiscal_year.status_changed',
                     'accounting_period.created','accounting_period.status_changed')),
-  7,
+  9,
   'Fiscal-year and accounting-period creation and status changes are audited'
 );
 
