@@ -58,8 +58,8 @@ select extensions.is(
 );
 
 -- A second authenticated user must not create a second workspace in this
--- single-company installation. The unique database invariant is the final
--- protection even if two onboarding requests race.
+-- single-company installation. The controlled onboarding function rejects
+-- an already-configured installation before any second-user records are made.
 select set_config(
   'request.jwt.claim.sub',
   (select second_user_id::text from _onboarding_users),
@@ -72,10 +72,14 @@ select extensions.throws_ok(
     'Duplicate Onboarding Limited',
     'Duplicate Onboarding'
   ),
-  '23505',
-  'duplicate key value violates unique constraint "companies_single_workspace_per_database"',
+  'P0001',
+  'This installation is already configured with a company',
   'A second authenticated user cannot create another company workspace'
 );
+
+-- Inspect resulting rows as the database test role, not as the second user,
+-- whose RLS view correctly excludes the first user's company and membership.
+reset role;
 
 select extensions.is(
   (select count(*)::integer from public.companies),
@@ -99,6 +103,5 @@ select extensions.is(
   'A rejected duplicate onboarding request creates no user profile'
 );
 
-reset role;
 select * from extensions.finish();
 rollback;
