@@ -23,7 +23,7 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 - [x] Verify chart-of-account seed and account activation rules (PR #44; seed hierarchy, activation, postability, manual-journal restrictions and role enforcement covered by pgTAP).
 - [x] Verify fiscal year and period creation, opening, closing and locking (PR #35 and PR #46; creation defaults, authorized opening/closing/locking, overlap and containment rejection, draft-journal close guard, open/empty-year close guards, locked-period posting rejection, no-reopen transitions, audit trail and direct-write restrictions covered by pgTAP).
 - [x] Verify balanced draft journal creation and reject unbalanced/invalid lines (PR #48; six additional pgTAP assertions cover one-line journals, zero/negative amounts, malformed and unavailable account IDs, and absence of partial headers; existing assertions cover balanced totals, unbalanced lines and debit/credit exclusivity).
-- [ ] Verify atomic posting, idempotency and duplicate submission handling.
+- [x] Verify atomic posting, idempotency and duplicate submission handling (PR #33 and current CI evidence: audit-write failure rolls back journal status, number, ledger and audit; repeated post returns the existing number; concurrent draft requests with the same key return one draft; concurrent posts return one journal number and produce exactly one ledger posting, audit row and counter increment).
 - [ ] Verify closed-period posting rejection.
 - [ ] Verify reversal linkage, opposite debit/credit lines and preservation of original posted journals.
 - [ ] Reconcile trial balance to posted journal lines.
