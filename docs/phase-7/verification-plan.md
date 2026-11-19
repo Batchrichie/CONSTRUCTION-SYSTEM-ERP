@@ -14,9 +14,9 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 - [x] Distinguish a missing company membership from a failed membership/company lookup.
 - [x] Provide a retry path for a transient company workspace lookup failure.
 - [x] Ignore stale company lookup responses after sign-out or a newer request.
-- [ ] Verify email confirmation and password recovery using a real development user.
-- [ ] Verify first-company onboarding and duplicate-company protection with authenticated tests.
-- [ ] Verify role changes and suspended membership behaviour.
+- [ ] Verify email confirmation and password recovery using a real development user (automated reset-flow tests merged in PR #40; hosted delivery and redirect allow-list still require manual verification).
+- [x] Verify first-company onboarding and duplicate-company protection with authenticated tests (PR #41; six pgTAP assertions).
+- [x] Verify role changes and suspended membership behaviour (PR #42; six pgTAP assertions).
 
 ### 7.2 Accounting controls
 
