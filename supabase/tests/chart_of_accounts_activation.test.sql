@@ -9,6 +9,8 @@ create temporary table _coa_fixture (
   company_id uuid not null,
   owner_id uuid not null,
   viewer_id uuid not null,
+  fiscal_year_id uuid,
+  period_id uuid,
   draft_id uuid,
   cash_id uuid,
   bank_id uuid
@@ -57,6 +59,25 @@ select f.company_id, f.viewer_id, r.id, 'active', now()
 from _coa_fixture f
 cross join public.roles r
 where r.code = 'viewer';
+
+update _coa_fixture
+set fiscal_year_id = gen_random_uuid(),
+    period_id = gen_random_uuid();
+
+insert into public.fiscal_years (
+  id, company_id, year_code, start_date, end_date, status, created_by
+)
+select fiscal_year_id, company_id, 'COA-' || left(company_id::text, 8),
+       date '2026-01-01', date '2026-12-31', 'open', owner_id
+from _coa_fixture;
+
+insert into public.accounting_periods (
+  id, company_id, fiscal_year_id, period_number, period_name,
+  start_date, end_date, status
+)
+select period_id, company_id, fiscal_year_id, 1, 'January',
+       date '2026-01-01', date '2026-01-31', 'open'
+from _coa_fixture;
 
 insert into public.chart_of_accounts (
   company_id, account_code, account_name, account_type, account_subtype,
