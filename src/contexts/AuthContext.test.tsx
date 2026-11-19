@@ -24,12 +24,13 @@ vi.mock('../lib/supabase', () => ({
 }))
 
 function AuthStateProbe() {
-  const { company, companyError, companyLoading, refreshCompany } = useAuth()
+  const { company, companyError, companyLoading, passwordRecovery, refreshCompany } = useAuth()
 
   return (
     <div>
       <span>{companyLoading ? 'company-loading' : 'company-idle'}</span>
       <span>{company?.display_name ?? 'no-company'}</span>
+      <span>{passwordRecovery ? 'password-recovery' : 'normal-auth'}</span>
       {companyError && <p role="alert">{companyError}</p>}
       <button onClick={() => void refreshCompany().catch(() => undefined)}>Retry</button>
     </div>
@@ -125,6 +126,28 @@ describe('AuthProvider company workspace loading', () => {
     await waitFor(() => {
       expect(screen.getByText('company-idle')).toBeInTheDocument()
       expect(screen.getByText('no-company')).toBeInTheDocument()
+    })
+  })
+
+  it('exposes the password recovery session before company routing', async () => {
+    let authCallback: ((event: string, session: { user: { id: string; email: string } }) => void) | undefined
+    mocks.onAuthStateChange.mockImplementation((callback) => {
+      authCallback = callback
+      return { data: { subscription: { unsubscribe: vi.fn() } } }
+    })
+
+    render(
+      <AuthProvider>
+        <AuthStateProbe />
+      </AuthProvider>,
+    )
+
+    authCallback?.('PASSWORD_RECOVERY', {
+      user: { id: 'user-1', email: 'owner@example.test' },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('password-recovery')).toBeInTheDocument()
     })
   })
 })
