@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(20);
+select extensions.plan(25);
 
 -- This test exercises the public accounting RPCs with a real authenticated
 -- identity claim, while keeping all fixture records inside this transaction.
@@ -214,6 +214,46 @@ select extensions.throws_ok(
   'P0001',
   'The journal accounting period is not open for posting',
   'Posting revalidates and rejects a draft assigned to a locked period'
+);
+
+select extensions.is(
+  (select status from public.journal_entries
+   where id=(select blocked_journal_id from _period_fixture)),
+  'draft'::text,
+  'A rejected closed-period posting leaves the journal in draft status'
+);
+
+select extensions.is(
+  (select journal_number from public.journal_entries
+   where id=(select blocked_journal_id from _period_fixture)),
+  null::text,
+  'A rejected closed-period posting does not assign a journal number'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.general_ledger
+   where company_id=(select company_id from _period_fixture)
+     and journal_entry_id=(select blocked_journal_id from _period_fixture)),
+  0,
+  'A rejected closed-period posting creates no general-ledger rows'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.audit_logs
+   where company_id=(select company_id from _period_fixture)
+     and entity_table='journal_entries'
+     and entity_id=(select blocked_journal_id::text from _period_fixture)
+     and action='journal.posted'),
+  0,
+  'A rejected closed-period posting creates no posting audit record'
+);
+
+select extensions.is(
+  (select count(*)::integer from private.journal_number_counters
+   where company_id=(select company_id from _period_fixture)
+     and fiscal_year_id=(select fiscal_year_id from _period_fixture)),
+  0,
+  'A rejected closed-period posting does not increment the journal number counter'
 );
 
 select extensions.is(
