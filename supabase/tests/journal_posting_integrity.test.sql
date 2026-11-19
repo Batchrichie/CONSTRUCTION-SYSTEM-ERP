@@ -17,7 +17,8 @@ create temporary table _journal_fixture (
   journal_id uuid,
   atomic_journal_id uuid,
   restricted_journal_id uuid,
-  audit_failure_journal_id uuid
+  audit_failure_journal_id uuid,
+  reversal_validation_journal_id uuid
 ) on commit drop;
 
 insert into _journal_fixture (
@@ -486,11 +487,30 @@ select extensions.throws_ok(
 );
 
 
+-- Dedicated posted entry for validation checks: the original journal above
+-- has already been reversed by the successful-reversal regression.
+update _journal_fixture
+set reversal_validation_journal_id = public.create_journal_draft(
+  company_id,
+  date '2026-01-21',
+  'Reversal validation test',
+  jsonb_build_array(
+    jsonb_build_object('account_id', cash_account_id, 'debit', 20, 'credit', 0),
+    jsonb_build_object('account_id', bank_account_id, 'debit', 0, 'credit', 20)
+  ),
+  'REVERSAL-VALIDATION-REFERENCE',
+  'reversal-validation-key'
+);
+
+select public.post_journal_entry(
+  (select reversal_validation_journal_id from _journal_fixture)
+);
+
 -- Reversal validation and transaction atomicity regressions.
 select extensions.throws_ok(
   format(
     'select public.reverse_journal_entry(%L::uuid,null::date,%L)',
-    (select journal_id from _journal_fixture),
+    (select reversal_validation_journal_id from _journal_fixture),
     'Missing reversal date'
   ),
   '22023',
@@ -501,7 +521,7 @@ select extensions.throws_ok(
 select extensions.throws_ok(
   format(
     'select public.reverse_journal_entry(%L::uuid,%L::date,%L)',
-    (select journal_id from _journal_fixture),
+    (select reversal_validation_journal_id from _journal_fixture),
     '2026-01-21',
     '  '
   ),
@@ -541,7 +561,7 @@ where id=(select period_id from _journal_fixture);
 select extensions.throws_ok(
   format(
     'select public.reverse_journal_entry(%L::uuid,%L::date,%L)',
-    (select restricted_journal_id from _journal_fixture),
+    (select reversal_validation_journal_id from _journal_fixture),
     '2026-01-21',
     'Closed period reversal'
   ),
