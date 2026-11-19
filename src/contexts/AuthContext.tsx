@@ -109,6 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const clearPasswordRecovery = useCallback(() => setPasswordRecovery(false), [])
+
   const userId = session?.user?.id ?? null
 
   const refreshCompany = useCallback(async () => {
@@ -215,13 +217,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       companyError,
       configurationMissing: !isSupabaseConfigured,
       passwordRecovery,
-      clearPasswordRecovery: () => setPasswordRecovery(false),
+      clearPasswordRecovery,
       refreshCompany,
       signOut: async () => {
         if (supabase) await supabase.auth.signOut()
       },
     }),
-    [session, company, roleCode, permissions, loading, companyLoading, companyError, passwordRecovery, refreshCompany],
+    [session, company, roleCode, permissions, loading, companyLoading, companyError, passwordRecovery, clearPasswordRecovery, refreshCompany],
   )
 
   return <Context.Provider value={value}>{children}</Context.Provider>
