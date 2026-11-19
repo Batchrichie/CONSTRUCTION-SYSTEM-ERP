@@ -19,6 +19,8 @@ type State = {
   companyLoading: boolean
   companyError: string | null
   configurationMissing: boolean
+  passwordRecovery: boolean
+  clearPasswordRecovery: () => void
   refreshCompany: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [companyLoading, setCompanyLoading] = useState(false)
   const [companyError, setCompanyError] = useState<string | null>(null)
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
   const authEventVersion = useRef(0)
   const companyRequestVersion = useRef(0)
   const activeUserId = useRef<string | null>(null)
@@ -49,7 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // overwritten by a slower initial getSession() response.
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
       authEventVersion.current += 1
       const nextUserId = nextSession?.user.id ?? null
       const userChanged = nextUserId !== activeUserId.current
@@ -210,12 +214,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       companyLoading,
       companyError,
       configurationMissing: !isSupabaseConfigured,
+      passwordRecovery,
+      clearPasswordRecovery: () => setPasswordRecovery(false),
       refreshCompany,
       signOut: async () => {
         if (supabase) await supabase.auth.signOut()
       },
     }),
-    [session, company, roleCode, permissions, loading, companyLoading, companyError, refreshCompany],
+    [session, company, roleCode, permissions, loading, companyLoading, companyError, passwordRecovery, refreshCompany],
   )
 
   return <Context.Provider value={value}>{children}</Context.Provider>
