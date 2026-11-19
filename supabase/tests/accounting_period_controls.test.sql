@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(18);
+select extensions.plan(20);
 
 -- This test exercises the public accounting RPCs with a real authenticated
 -- identity claim, while keeping all fixture records inside this transaction.
@@ -118,6 +118,48 @@ select extensions.throws_ok(
   'P0001',
   'Accounting period must fall within its fiscal year',
   'An accounting period outside its fiscal year is rejected'
+);
+
+-- Fiscal years must not close while any period remains open, and an empty
+-- fiscal year must not be closed without first establishing its periods.
+select extensions.throws_ok(
+  format(
+    'select public.transition_fiscal_year_status(%L::uuid,%L)',
+    (select fiscal_year_id from _period_fixture),
+    'closed'
+  ),
+  'P0001',
+  'A fiscal year can close only after all its periods are closed or locked',
+  'A fiscal year cannot close while an accounting period is still open'
+);
+
+update _period_fixture
+set fiscal_year_id = public.create_fiscal_year(
+  company_id, 'EMPTY-' || left(company_id::text, 8),
+  date '2027-01-01', date '2027-12-31'
+);
+
+select public.transition_fiscal_year_status(
+  (select fiscal_year_id from _period_fixture), 'open'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.transition_fiscal_year_status(%L::uuid,%L)',
+    (select fiscal_year_id from _period_fixture),
+    'closed'
+  ),
+  'P0001',
+  'A fiscal year can close only after all its periods are closed or locked',
+  'A fiscal year with no accounting periods cannot be closed'
+);
+
+-- Restore the original year fixture; its period is still open.
+update _period_fixture
+set fiscal_year_id = (
+  select id from public.fiscal_years
+  where company_id=(select company_id from _period_fixture)
+    and year_code='TEST-' || left((select company_id::text from _period_fixture),8)
 );
 
 select extensions.is(
