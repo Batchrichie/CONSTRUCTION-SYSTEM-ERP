@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(19);
+select extensions.plan(20);
 
 -- Test-only fixture. Every row is rolled back at the end of this test.
 create temporary table _project_cost_fixture (
@@ -304,6 +304,26 @@ select extensions.is(
    where company_id = (select company_id from _project_cost_fixture)),
   60::numeric,
   'The project cost ledger contains the project share of the expense debit'
+);
+
+select extensions.is(
+  (select count(*)::integer
+   from public.overhead_cost_ledger
+   where company_id = (select company_id from _project_cost_fixture)),
+  1,
+  'The overhead ledger exposes the overhead share of the expense debit'
+);
+
+select extensions.is(
+  (select sum(signed_cost)
+   from public.project_cost_ledger
+   where company_id = (select company_id from _project_cost_fixture))
+  +
+  (select sum(signed_cost)
+   from public.overhead_cost_ledger
+   where company_id = (select company_id from _project_cost_fixture)),
+  100::numeric,
+  'Project and overhead reports reconcile to the complete expense debit'
 );
 
 -- Complete the authenticated project-cost workflow with an approved budget
