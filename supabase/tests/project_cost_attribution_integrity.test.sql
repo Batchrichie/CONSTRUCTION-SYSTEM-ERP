@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(20);
+select extensions.plan(21);
 
 -- Test-only fixture. Every row is rolled back at the end of this test.
 create temporary table _project_cost_fixture (
@@ -201,6 +201,32 @@ select extensions.throws_ok(
   'Allocation amounts must not exceed 4 decimal places',
   'Project cost allocations reject more than four decimal places without rounding'
 );
+
+update public.cost_codes
+set is_active = false
+where id = (select cost_code_id from _project_cost_fixture);
+
+select extensions.throws_ok(
+  format(
+    'select public.replace_journal_line_cost_allocations(%L::uuid,%L::uuid,%L::jsonb)',
+    (select company_id from _project_cost_fixture),
+    (select expense_line_id from _project_cost_fixture),
+    jsonb_build_array(jsonb_build_object(
+      'attribution_scope', 'project',
+      'project_id', (select project_one_id from _project_cost_fixture),
+      'cost_code_id', (select cost_code_id from _project_cost_fixture),
+      'allocation_side', 'debit',
+      'amount', 100
+    ))::text
+  ),
+  '22023',
+  'Cost code is invalid or inactive',
+  'Inactive cost codes cannot receive expense allocations'
+);
+
+update public.cost_codes
+set is_active = true
+where id = (select cost_code_id from _project_cost_fixture);
 
 select extensions.throws_ok(
   format(
