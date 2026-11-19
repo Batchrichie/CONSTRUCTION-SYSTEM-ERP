@@ -1,7 +1,7 @@
 # Construction System ERP — Delivery Roadmap
 
 Last updated: 2026-11-19  
-Baseline: `main` at `94246238dae0595d901bde2252c58d2d15bbddfd`
+Baseline: `main` at `37668c6496be410351cf2b89e25129d842fb2715`
 
 This is the working delivery plan. Work through one phase at a time, in order. A phase is complete only when its acceptance criteria are implemented, automated checks pass, the reviewed PR is merged, and any required manual release checks are explicitly recorded.
 
@@ -26,11 +26,11 @@ Phase 7 is the release gate proving the foundations work together under authenti
 3. Retry transient workspace lookup failures — complete.
 4. Ignore stale lookup responses after sign-out or a newer request — complete.
 5. Verify email confirmation and password recovery with a real development user — pending manual verification.
-6. Verify first-company onboarding with authenticated tests — pending verification.
-7. Verify duplicate-company protection with authenticated tests — pending verification.
-8. Verify role changes and suspended membership behaviour — pending verification.
+6. Verify first-company onboarding with authenticated tests — complete (PR #41).
+7. Verify duplicate-company protection with authenticated tests — complete (PR #41; duplicate requests leave no extra company, membership or profile).
+8. Verify role changes and suspended membership behaviour — complete (PR #42; owners can change ordinary member roles, and suspension immediately revokes workspace access).
 
-**Next work:** inspect current auth implementation and test coverage, then address the earliest unverified item. Real email flows require a real development user; do not claim completion without observing the actual flow.
+**Next work:** complete the real-user email confirmation and password recovery check. The reset UI and recovery event have automated coverage in PR #40, but hosted email delivery and the configured redirect allow-list still require a real development account and inbox verification.
 
 ### 7.2 Accounting controls — IN PROGRESS
 
