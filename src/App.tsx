@@ -23,13 +23,14 @@ export default function App() {
     companyError,
     refreshCompany,
     configurationMissing,
+    passwordRecovery,
   } = useAuth()
 
   if (loading) {
     return <main className="auth-screen"><div className="loading-card">Loading secure workspace…</div></main>
   }
 
-  if (configurationMissing || !user) return <AuthPage />
+  if (passwordRecovery || configurationMissing || !user) return <AuthPage />
 
   if (companyLoading) {
     return <main className="auth-screen"><div className="loading-card">Loading company workspace…</div></main>
