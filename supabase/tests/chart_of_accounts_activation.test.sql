@@ -226,7 +226,7 @@ select extensions.throws_ok(
     (select draft_id from _coa_fixture)
   ),
   'P0001',
-  'A journal line uses an inactive or non-postable account',
+  'A journal line uses an inactive, non-postable or restricted account',
   'Posting rechecks account activation after the draft was created'
 );
 
@@ -248,6 +248,8 @@ set is_active = false
 where company_id = (select company_id from _coa_fixture)
   and account_code = '6913';
 
+reset role;
+
 select extensions.is(
   (select count(*)::integer from public.chart_of_accounts
    where company_id = (select company_id from _coa_fixture)
@@ -256,6 +258,5 @@ select extensions.is(
   'A read-only member cannot deactivate a chart-of-accounts record'
 );
 
-reset role;
 select * from extensions.finish();
 rollback;
