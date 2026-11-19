@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(42);
+select extensions.plan(48);
 
 -- Exercise the public journal RPCs using authenticated JWT claims. All fixtures
 -- are transaction-scoped and rolled back at the end of the test.
@@ -198,6 +198,96 @@ select extensions.throws_ok(
   '22023',
   'Each journal line must have either a positive debit or a positive credit, not both (line 1)',
   'A journal line cannot contain both a debit and a credit'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
+    (select company_id from _journal_fixture),
+    '2026-01-15',
+    'Journal with one line',
+    jsonb_build_array(
+      jsonb_build_object('account_id',(select cash_account_id from _journal_fixture),'debit',10,'credit',0)
+    )::text
+  ),
+  '22023',
+  'A journal must contain between 2 and 500 lines',
+  'A journal with fewer than two lines is rejected'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
+    (select company_id from _journal_fixture),
+    '2026-01-15',
+    'Zero-value journal line',
+    jsonb_build_array(
+      jsonb_build_object('account_id',(select cash_account_id from _journal_fixture),'debit',0,'credit',0),
+      jsonb_build_object('account_id',(select bank_account_id from _journal_fixture),'debit',10,'credit',0)
+    )::text
+  ),
+  '22023',
+  'Each journal line must have either a positive debit or a positive credit, not both (line 1)',
+  'A journal line with zero debit and zero credit is rejected'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
+    (select company_id from _journal_fixture),
+    '2026-01-15',
+    'Negative journal line',
+    jsonb_build_array(
+      jsonb_build_object('account_id',(select cash_account_id from _journal_fixture),'debit',-10,'credit',0),
+      jsonb_build_object('account_id',(select bank_account_id from _journal_fixture),'debit',0,'credit',10)
+    )::text
+  ),
+  '22023',
+  'Each journal line must have either a positive debit or a positive credit, not both (line 1)',
+  'A journal line with a negative amount is rejected'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
+    (select company_id from _journal_fixture),
+    '2026-01-15',
+    'Malformed account identifier',
+    jsonb_build_array(
+      jsonb_build_object('account_id','not-a-uuid','debit',10,'credit',0),
+      jsonb_build_object('account_id',(select bank_account_id from _journal_fixture),'debit',0,'credit',10)
+    )::text
+  ),
+  '22023',
+  'Invalid account_id, debit or credit on journal line 1',
+  'A malformed account identifier is rejected'
+);
+
+select extensions.throws_ok(
+  format(
+    'select public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
+    (select company_id from _journal_fixture),
+    '2026-01-15',
+    'Unknown account',
+    jsonb_build_array(
+      jsonb_build_object('account_id',gen_random_uuid(),'debit',10,'credit',0),
+      jsonb_build_object('account_id',(select bank_account_id from _journal_fixture),'debit',0,'credit',10)
+    )::text
+  ),
+  '22023',
+  'Account on line 1 is unavailable for manual journal posting',
+  'An account outside the company chart is rejected'
+);
+
+select extensions.is(
+  (select count(*)::integer from public.journal_entries
+   where company_id=(select company_id from _journal_fixture)
+     and description in (
+       'Journal with one line','Zero-value journal line','Negative journal line',
+       'Malformed account identifier','Unknown account'
+     )),
+  0,
+  'Rejected draft requests leave no partial journal headers behind'
 );
 
 -- Force the posting audit write to fail. The complete posting statement,
