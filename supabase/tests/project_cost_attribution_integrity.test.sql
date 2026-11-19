@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(14);
+select extensions.plan(19);
 
 -- Test-only fixture. Every row is rolled back at the end of this test.
 create temporary table _project_cost_fixture (
@@ -13,6 +13,7 @@ create temporary table _project_cost_fixture (
   project_one_id uuid not null,
   project_two_id uuid not null,
   cost_code_id uuid not null,
+  cost_centre_id uuid,
   expense_account_id uuid,
   cash_account_id uuid,
   journal_id uuid,
@@ -107,6 +108,17 @@ insert into public.cost_codes (
 select cost_code_id, company_id, 'MAT-001', 'Construction Materials', 'materials'
 from _project_cost_fixture;
 
+insert into public.cost_centres (
+  id, company_id, code, name, centre_type
+)
+select gen_random_uuid(), company_id, 'OH-ADMIN', 'Administration Overhead', 'overhead'
+from _project_cost_fixture;
+
+update _project_cost_fixture f
+set cost_centre_id = c.id
+from public.cost_centres c
+where c.company_id = f.company_id and c.code = 'OH-ADMIN';
+
 update _project_cost_fixture f
 set expense_account_id = a.id
 from public.chart_of_accounts a
@@ -190,6 +202,42 @@ select extensions.throws_ok(
   'Project cost allocations reject more than four decimal places without rounding'
 );
 
+select extensions.throws_ok(
+  format(
+    'select public.replace_journal_line_cost_allocations(%L::uuid,%L::uuid,%L::jsonb)',
+    (select company_id from _project_cost_fixture),
+    (select expense_line_id from _project_cost_fixture),
+    jsonb_build_array(
+      jsonb_build_object(
+        'attribution_scope', 'project',
+        'project_id', (select project_one_id from _project_cost_fixture),
+        'cost_code_id', (select cost_code_id from _project_cost_fixture),
+        'allocation_side', 'debit',
+        'amount', 70
+      ),
+      jsonb_build_object(
+        'attribution_scope', 'overhead',
+        'cost_centre_id', (select cost_centre_id from _project_cost_fixture),
+        'cost_code_id', (select cost_code_id from _project_cost_fixture),
+        'allocation_side', 'debit',
+        'amount', 40
+      )
+    )::text
+  ),
+  '22023',
+  'Allocated amount cannot exceed the journal line amount',
+  'Project and overhead allocations cannot exceed the source expense line'
+);
+
+select extensions.is(
+  (select count(*)::integer
+   from public.journal_line_cost_allocations
+   where company_id = (select company_id from _project_cost_fixture)
+     and journal_line_id = (select expense_line_id from _project_cost_fixture)),
+  0,
+  'An over-allocation attempt rolls back the entire replacement'
+);
+
 select public.replace_journal_line_cost_allocations(
   (select company_id from _project_cost_fixture),
   (select expense_line_id from _project_cost_fixture),
@@ -199,7 +247,7 @@ select public.replace_journal_line_cost_allocations(
       'project_id', (select project_one_id from _project_cost_fixture),
       'cost_code_id', (select cost_code_id from _project_cost_fixture),
       'allocation_side', 'debit',
-      'amount', 60,
+      'amount', 30,
       'description', 'Materials allocation to project one'
     ),
     jsonb_build_object(
@@ -207,8 +255,16 @@ select public.replace_journal_line_cost_allocations(
       'project_id', (select project_two_id from _project_cost_fixture),
       'cost_code_id', (select cost_code_id from _project_cost_fixture),
       'allocation_side', 'debit',
-      'amount', 40,
+      'amount', 30,
       'description', 'Materials allocation to project two'
+    ),
+    jsonb_build_object(
+      'attribution_scope', 'overhead',
+      'cost_centre_id', (select cost_centre_id from _project_cost_fixture),
+      'cost_code_id', (select cost_code_id from _project_cost_fixture),
+      'allocation_side', 'debit',
+      'amount', 40,
+      'description', 'Administration overhead allocation'
     )
   )
 );
@@ -246,8 +302,8 @@ select extensions.is(
   (select sum(signed_cost)
    from public.project_cost_ledger
    where company_id = (select company_id from _project_cost_fixture)),
-  100::numeric,
-  'The project cost ledger reconciles to the full expense debit'
+  60::numeric,
+  'The project cost ledger contains the project share of the expense debit'
 );
 
 -- Complete the authenticated project-cost workflow with an approved budget
@@ -260,7 +316,7 @@ set budget_version_id = public.save_project_budget_draft(
   'Approved project baseline',
   jsonb_build_array(jsonb_build_object(
     'cost_code_id', f.cost_code_id,
-    'budget_amount', '60.0000',
+    'budget_amount', '30.0000',
     'notes', 'Project one materials baseline'
   ))
 );
@@ -304,7 +360,7 @@ select extensions.is(
   (select approved_amount
    from public.project_budgets
    where budget_version_id = (select budget_version_id from _project_cost_fixture)),
-  60::numeric,
+  30::numeric,
   'Approval releases the full approved budget amount'
 );
 
@@ -345,6 +401,22 @@ select extensions.is(
    where company_id = (select company_id from _project_cost_fixture)),
   0::numeric,
   'The original expense and its reversal net project cost to zero'
+);
+
+select extensions.is(
+  (select count(*)::integer
+   from public.overhead_cost_ledger
+   where company_id = (select company_id from _project_cost_fixture)),
+  2,
+  'The overhead ledger retains the original and reversing allocation'
+);
+
+select extensions.is(
+  (select sum(signed_cost)
+   from public.overhead_cost_ledger
+   where company_id = (select company_id from _project_cost_fixture)),
+  0::numeric,
+  'The overhead allocation and its reversal net to zero'
 );
 
 reset role;
