@@ -21,7 +21,7 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 ### 7.2 Accounting controls
 
 - [x] Verify chart-of-account seed and account activation rules (PR #44; seed hierarchy, activation, postability, manual-journal restrictions and role enforcement covered by pgTAP).
-- [ ] Verify fiscal year and period creation, opening, closing and locking.
+- [x] Verify fiscal year and period creation, opening, closing and locking (PR #35 and PR #46; creation defaults, authorized opening/closing/locking, overlap and containment rejection, draft-journal close guard, open/empty-year close guards, locked-period posting rejection, no-reopen transitions, audit trail and direct-write restrictions covered by pgTAP).
 - [ ] Verify balanced draft journal creation and reject unbalanced/invalid lines.
 - [ ] Verify atomic posting, idempotency and duplicate submission handling.
 - [ ] Verify closed-period posting rejection.
