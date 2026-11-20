@@ -41,6 +41,9 @@ jobs:
       - name: Run two-session estimate transition concurrency test
         run: bash scripts/test-estimate-workflow-concurrency.sh
 
+      - name: Run two-session estimate revision concurrency test
+        run: bash scripts/test-estimate-revision-concurrency.sh
+
       - name: Run two-session duplicate journal draft idempotency test
         run: bash scripts/test-journal-draft-idempotency.sh
 
