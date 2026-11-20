@@ -1,7 +1,7 @@
 -- Phase 7.4.1: authenticated customer/supplier and contact permission regression tests.
 -- Runs only in the disposable Supabase database used by CI.
 BEGIN;
-SELECT plan(12);
+SELECT plan(11);
 INSERT INTO auth.users (id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at) VALUES
 ('76000000-0000-4000-8000-000000000001','authenticated','authenticated','phase741-manager@example.test','test-password',now(),now(),now()),
 ('76000000-0000-4000-8000-000000000002','authenticated','authenticated','phase741-viewer@example.test','test-password',now(),now(),now());
