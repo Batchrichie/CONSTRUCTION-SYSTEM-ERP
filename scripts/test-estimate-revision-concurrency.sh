@@ -8,6 +8,7 @@ COMPANY_ID="92000000-0000-4000-8000-000000000004"
 USER_ID="91000000-0000-4000-8000-000000000004"
 PARTY_ID="93000000-0000-4000-8000-000000000004"
 SOURCE_ESTIMATE_ID="94000000-0000-4000-8000-000000000004"
+SECOND_SOURCE_ESTIMATE_ID="94000000-0000-4000-8000-000000000005"
 
 A_LOG="$(mktemp)"
 B_LOG="$(mktemp)"
@@ -98,7 +99,7 @@ INSERT INTO public.estimate_items (
 SELECT '$COMPANY_ID', '$SOURCE_ESTIMATE_ID', id, '1.1',
        'Site establishment', 'item', 1, 1250, 1
 FROM public.estimate_sections
-WHERE company_id = '$COMPANY_ID' AND estimate_id = '$SOURCE_ESTIMATE_ID';
+WHERE company_id = '$COMPANY_ID' AND estimate_id IN ('$SOURCE_ESTIMATE_ID', '$SECOND_SOURCE_ESTIMATE_ID');
 SQL
 
 echo "Session A acquires the estimate-number advisory lock and holds it..."
@@ -188,6 +189,6 @@ if [[ "$COUNTS" != "2:2" ]]; then
   exit 1
 fi
 
-echo "PASS: two independent sessions requested revisions for the same estimate number."
-echo "PASS: PostgreSQL serialized both requests and assigned unique revisions 2 and 3."
+echo "PASS: two independent sessions cloned different source revisions sharing the same estimate number."
+echo "PASS: PostgreSQL serialized both requests and serialized on the estimate-number advisory lock and assigned unique revisions 3 and 4."
 echo "PASS: each new revision contains its own copied BOQ section and item."
