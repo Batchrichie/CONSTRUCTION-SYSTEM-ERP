@@ -79,27 +79,28 @@ INSERT INTO public.business_parties (
 
 INSERT INTO public.estimates (
   id, company_id, estimate_number, revision_number, customer_party_id,
-  title, status, created_by
-) VALUES (
-  '$SOURCE_ESTIMATE_ID', '$COMPANY_ID', 'T745-REV-CONC', 1,
-  '$PARTY_ID', 'Approved source estimate', 'approved', '$USER_ID'
-);
+  title, status, approved_by, approved_at, created_by
+) VALUES
+  ('$SOURCE_ESTIMATE_ID', '$COMPANY_ID', 'T745-REV-CONC', 1,
+   '$PARTY_ID', 'Approved source estimate', 'approved', '$USER_ID', now(), '$USER_ID'),
+  ('$SECOND_SOURCE_ESTIMATE_ID', '$COMPANY_ID', 'T745-REV-CONC', 2,
+   '$PARTY_ID', 'Second approved source estimate', 'approved', '$USER_ID', now(), '$USER_ID');
 
 INSERT INTO public.estimate_sections (
   company_id, estimate_id, section_number, title, description, sort_order
-) VALUES (
-  '$COMPANY_ID', '$SOURCE_ESTIMATE_ID', 1, 'Preliminaries',
-  'Copied once into each revision', 1
-);
+) VALUES
+  ('$COMPANY_ID', '$SOURCE_ESTIMATE_ID', 1, 'Preliminaries', 'Copied into each revision', 1),
+  ('$COMPANY_ID', '$SECOND_SOURCE_ESTIMATE_ID', 1, 'Preliminaries', 'Copied into each revision', 1);
 
 INSERT INTO public.estimate_items (
   company_id, estimate_id, section_id, item_number, description,
   unit, quantity, unit_rate, sort_order
 )
-SELECT '$COMPANY_ID', '$SOURCE_ESTIMATE_ID', id, '1.1',
+SELECT '$COMPANY_ID', s.estimate_id, s.id, '1.1',
        'Site establishment', 'item', 1, 1250, 1
-FROM public.estimate_sections
-WHERE company_id = '$COMPANY_ID' AND estimate_id IN ('$SOURCE_ESTIMATE_ID', '$SECOND_SOURCE_ESTIMATE_ID');
+FROM public.estimate_sections s
+WHERE s.company_id = '$COMPANY_ID'
+  AND s.estimate_id IN ('$SOURCE_ESTIMATE_ID', '$SECOND_SOURCE_ESTIMATE_ID');
 SQL
 
 echo "Session A acquires the estimate-number advisory lock and holds it..."
