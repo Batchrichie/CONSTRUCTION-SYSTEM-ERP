@@ -136,7 +136,7 @@ PGAPPNAME=phase745_revision_contender psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 >"
 BEGIN;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '$USER_ID', true);
-SELECT public.clone_estimate_revision('$COMPANY_ID', '$SOURCE_ESTIMATE_ID');
+SELECT public.clone_estimate_revision('$COMPANY_ID', '$SECOND_SOURCE_ESTIMATE_ID');
 COMMIT;
 SQL
 B_PID=$!
@@ -168,8 +168,8 @@ FROM public.estimates
 WHERE company_id = '$COMPANY_ID' AND estimate_number = 'T745-REV-CONC';
 ")"
 
-if [[ "$RESULT" != "1,2,3" ]]; then
-  echo "FAIL: expected source and two unique revisions 1,2,3; received '$RESULT'."
+if [[ "$RESULT" != "1,2,3,4" ]]; then
+  echo "FAIL: expected two source and two unique revisions 1,2,3,4; received '$RESULT'."
   cat "$A_LOG" "$B_LOG"
   exit 1
 fi
@@ -185,11 +185,11 @@ SELECT
    WHERE e.company_id = '$COMPANY_ID' AND e.estimate_number = 'T745-REV-CONC');
 ")"
 
-if [[ "$COUNTS" != "2:2" ]]; then
-  echo "FAIL: expected one copied section and item per new revision (2:2); received '$COUNTS'."
+if [[ "$COUNTS" != "4:4" ]]; then
+  echo "FAIL: expected four source/copied sections and items (4:4); received '$COUNTS'."
   exit 1
 fi
 
 echo "PASS: two independent sessions cloned different source revisions sharing the same estimate number."
-echo "PASS: PostgreSQL serialized both requests and serialized on the estimate-number advisory lock and assigned unique revisions 3 and 4."
+echo "PASS: PostgreSQL serialized both requests on the estimate-number advisory lock and assigned unique revisions 3 and 4."
 echo "PASS: each new revision contains its own copied BOQ section and item."
