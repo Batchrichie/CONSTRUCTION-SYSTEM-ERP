@@ -60,6 +60,7 @@ UPDATE public.chart_of_accounts SET is_active=false WHERE company_id=(SELECT com
 SELECT set_config('request.jwt.claim.sub',(SELECT owner_id::text FROM _role_fixture),true);
 SELECT extensions.ok((SELECT is_active FROM public.chart_of_accounts WHERE company_id=(SELECT company_id FROM _role_fixture) AND account_code='1110'),
   'Viewer cannot deactivate a chart-of-accounts record');
+SELECT set_config('request.jwt.claim.sub',(SELECT viewer_id::text FROM _role_fixture),true);
 SELECT extensions.throws_ok(
   format('SELECT public.create_journal_draft(%L::uuid,%L::date,%L,%L::jsonb)',
     (SELECT company_id FROM _role_fixture),date '2026-01-16','Viewer must not create journal',
