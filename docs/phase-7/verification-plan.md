@@ -52,13 +52,15 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 ### 7.5 Security, quality and release readiness
 
 - [x] Test cross-company isolation and role-specific access with at least two authenticated users (PR #61; one authorized member and one authenticated non-member in the single-company installation model; member accounting access succeeds, outsider reads and writes are denied).
-- [ ] Review grants, RLS policies, SECURITY DEFINER functions and exposed views (hosted read-only review on 2026-11-27: all public tables have RLS; all public views use security_invoker; no public SECURITY DEFINER functions; private SECURITY DEFINER functions have empty search_path. Eight private trigger functions still have API-role EXECUTE grants because PR #60 migration is not applied to hosted DB).
+- [x] Review grants, RLS policies, SECURITY DEFINER functions and exposed views (hosted read-only review on 2026-11-27: all public tables have RLS and policies; all public views use security_invoker; no public SECURITY DEFINER functions; private SECURITY DEFINER functions have empty search_path; no public tables granted directly to anon; no public functions executable by anon. Eight private trigger functions had API-role EXECUTE grants; migration `20261127214753_revoke_private_trigger_function_execute` was applied and verified on hosted DB on 2026-11-27: anon/authenticated execution is false for all private trigger functions).
 - [ ] Enable leaked-password protection in Supabase Auth settings (security advisor still reports disabled; enable in Supabase Dashboard → Authentication → Settings → Password Security).
 - [ ] Add deterministic automated database tests and authenticated browser integration tests.
 - [ ] Keep CI green and document the exact checks run.
 - [ ] Define backup, recovery, monitoring and deployment procedures before production use.
 
 **Phase 7.5 PR #61 evidence (2026-11-27):** Merge commit `8f3f29bb8d24799f16e55399c750d916bd8307a1`. CI, isolated database migration/pgTAP tests, all four concurrency checks and Vercel preview passed. Test fixtures roll back; no hosted database or production data changes were made.
+
+**Hosted security migration evidence (2026-11-27):** Applied migration `20261127214753_revoke_private_trigger_function_execute` to Supabase project `tpqpdunwniezmvrvyzxv` after explicit user approval. Post-migration verification confirmed all 12 private trigger functions deny EXECUTE to anon and authenticated while postgres retains EXECUTE. The only remaining security-advisor finding is leaked-password protection disabled.
 
 ## Execution order
 
