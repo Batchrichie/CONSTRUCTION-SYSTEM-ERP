@@ -38,14 +38,16 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 - [x] Verify project cost ledger reconciliation to posted expenses.
 - [x] Verify reversal of project costs returns project and overhead ledgers to net zero.
 
-### 7.4 Commercial workflows
+### 7.4 Commercial workflows — COMPLETE (PRs #23–#27, #54–#55)
 
-- [ ] Verify customer/supplier creation and contacts under role permissions.
-- [ ] Verify estimate/BOQ calculations against PostgreSQL totals.
-- [ ] Verify invalid customer, project and contract links are rejected.
-- [ ] Verify submit/approve/reject/cancel permissions and immutable status history.
-- [ ] Verify revision cloning preserves source estimate and BOQ without duplicating or losing sections/items.
-- [ ] Verify concurrent revision creation cannot generate duplicate revision numbers.
+- [x] Verify customer/supplier creation and contacts under role permissions (PR #55; authenticated accountant/read-only fixtures verify create/read boundaries, primary-contact replacement and one-active-primary invariant).
+- [x] Verify estimate/BOQ calculations against PostgreSQL totals (PR #23; generated four-decimal line totals, subtotal/discount/tax composition, invoker-security totals view and frontend decimal tests).
+- [x] Verify invalid customer, project and contract links are rejected (PR #24; active customer designation, project/contract/estimate customer consistency, company boundaries and linked-party role protection).
+- [x] Verify submit/approve/reject/cancel permissions and immutable status history (PR #25; 27 pgTAP assertions cover priced submission, separate manage/approve permissions, required rejection reasons, allowed transitions, audit attribution and direct-write denial; PR #26 adds a two-session stale-transition race test).
+- [x] Verify revision cloning preserves source estimate and BOQ without duplicating or losing sections/items (PR #27; permission and eligible-source checks, draft status, validity-date handling, section/item copy, remapped BOQ relationships and source immutability).
+- [x] Verify concurrent revision creation cannot generate duplicate revision numbers (PR #54; two independent PostgreSQL sessions serialize on the company/estimate-number advisory lock and create unique revisions with copied BOQ content).
+
+**Phase 7.4 final verification evidence (2026-11-27):** PR #55 merge commit `4f3048a86e21d356495ebfe4c2b1315db9582764` is the current `main` head. Its PR-head CI completed successfully: frontend type check/build/tests/lint; isolated Supabase migrations and pgTAP; estimate transition, estimate revision, duplicate journal-draft and duplicate journal-posting concurrency tests; and Vercel preview. No live database changes were made. Earlier dedicated PRs #23–#27 and #54 also merged; their database and frontend checks passed.
 
 ### 7.5 Security, quality and release readiness
 
