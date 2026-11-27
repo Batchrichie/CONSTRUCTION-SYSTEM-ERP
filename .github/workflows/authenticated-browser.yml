@@ -1,0 +1,47 @@
+name: Authenticated Browser Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Deployed application URL to test (for example, the Vercel preview URL)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  authenticated-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      E2E_BASE_URL: ${{ inputs.base_url }}
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install application dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run authenticated browser tests
+        run: npx playwright test --config=playwright.config.cjs
+      - name: Upload browser test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: authenticated-browser-test-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
