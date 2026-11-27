@@ -47,16 +47,18 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 - [x] Verify revision cloning preserves source estimate and BOQ without duplicating or losing sections/items (PR #27; permission and eligible-source checks, draft status, validity-date handling, section/item copy, remapped BOQ relationships and source immutability).
 - [x] Verify concurrent revision creation cannot generate duplicate revision numbers (PR #54; two independent PostgreSQL sessions serialize on the company/estimate-number advisory lock and create unique revisions with copied BOQ content).
 
-**Phase 7.4 final verification evidence (2026-11-27):** PR #55 merge commit `4f3048a86e21d356495ebfe4c2b1315db9582764` is the current `main` head. Its PR-head CI completed successfully: frontend type check/build/tests/lint; isolated Supabase migrations and pgTAP; estimate transition, estimate revision, duplicate journal-draft and duplicate journal-posting concurrency tests; and Vercel preview. No live database changes were made. Earlier dedicated PRs #23–#27 and #54 also merged; their database and frontend checks passed.
+**Phase 7.4 final verification evidence (2026-11-27):** PR #55 merge commit `4f3048a86e21d356495ebfe4c2b1315db9582764` was verified with frontend type check/build/tests/lint; isolated Supabase migrations and pgTAP; estimate transition, estimate revision, duplicate journal-draft and duplicate journal-posting concurrency tests; and Vercel preview. No live database changes were made. Earlier dedicated PRs #23–#27 and #54 also merged; their database and frontend checks passed.
 
 ### 7.5 Security, quality and release readiness
 
-- [ ] Test cross-company isolation and role-specific access with at least two authenticated users.
-- [ ] Review grants, RLS policies, SECURITY DEFINER functions and exposed views.
-- [ ] Enable leaked-password protection in Supabase Auth settings.
+- [x] Test cross-company isolation and role-specific access with at least two authenticated users (PR #61; one authorized member and one authenticated non-member in the single-company installation model; member accounting access succeeds, outsider reads and writes are denied).
+- [ ] Review grants, RLS policies, SECURITY DEFINER functions and exposed views (hosted read-only review on 2026-11-27: all public tables have RLS; all public views use security_invoker; no public SECURITY DEFINER functions; private SECURITY DEFINER functions have empty search_path. Eight private trigger functions still have API-role EXECUTE grants because PR #60 migration is not applied to hosted DB).
+- [ ] Enable leaked-password protection in Supabase Auth settings (security advisor still reports disabled; enable in Supabase Dashboard → Authentication → Settings → Password Security).
 - [ ] Add deterministic automated database tests and authenticated browser integration tests.
 - [ ] Keep CI green and document the exact checks run.
 - [ ] Define backup, recovery, monitoring and deployment procedures before production use.
+
+**Phase 7.5 PR #61 evidence (2026-11-27):** Merge commit `8f3f29bb8d24799f16e55399c750d916bd8307a1`. CI, isolated database migration/pgTAP tests, all four concurrency checks and Vercel preview passed. Test fixtures roll back; no hosted database or production data changes were made.
 
 ## Execution order
 
@@ -70,7 +72,7 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 ## Current baseline (2026-11-02)
 
 - Main branch includes Phases 1–6 and CI stabilisation PR #8.
-- The dedicated development Supabase project has 16 recorded migrations and all inspected public application tables have RLS enabled.
-- One company and one membership exist; no fiscal years, journals, projects, business parties or estimates are currently recorded.
-- CI currently covers TypeScript/production build, Vitest and ESLint. The automated suite is still small and does not exercise authenticated database behaviour.
-- Security advisor warning: leaked-password protection is disabled. Performance advisor unused-index notices are expected while the development database is nearly empty; do not remove indexes based only on this empty-database signal.
+- The dedicated development Supabase project has recorded migrations and all inspected public application tables have RLS enabled.
+- One company and one membership existed at the initial baseline; no fiscal years, journals, projects, business parties or estimates were then recorded.
+- CI covers TypeScript/production build, Vitest, ESLint, isolated Supabase migrations, pgTAP and concurrency checks.
+- Security advisor warning: leaked-password protection is disabled. Performance advisor unused-index notices should not be acted on without workload evidence.
