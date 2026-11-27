@@ -56,6 +56,7 @@ SELECT extensions.ok(NOT private.has_company_permission((SELECT company_id FROM 
 SELECT extensions.is((SELECT count(*)::integer FROM public.chart_of_accounts WHERE company_id=(SELECT company_id FROM _role_fixture)),0,
   'Viewer cannot read the company chart of accounts');
 UPDATE public.chart_of_accounts SET is_active=false WHERE company_id=(SELECT company_id FROM _role_fixture) AND account_code='1110';
+SELECT set_config('request.jwt.claim.sub',(SELECT owner_id::text FROM _role_fixture),true);
 SELECT extensions.ok((SELECT is_active FROM public.chart_of_accounts WHERE company_id=(SELECT company_id FROM _role_fixture) AND account_code='1110'),
   'Viewer cannot deactivate a chart-of-accounts record');
 SELECT extensions.throws_ok(
@@ -71,6 +72,7 @@ SELECT extensions.throws_ok(
 SELECT set_config('request.jwt.claim.sub',(SELECT accountant_id::text FROM _role_fixture),true);
 UPDATE public.company_memberships SET role_id=(SELECT id FROM public.roles WHERE code='admin')
 WHERE company_id=(SELECT company_id FROM _role_fixture) AND user_id=(SELECT viewer_id FROM _role_fixture);
+SELECT set_config('request.jwt.claim.sub',(SELECT owner_id::text FROM _role_fixture),true);
 SELECT extensions.is((SELECT r.code FROM public.company_memberships m JOIN public.roles r ON r.id=m.role_id
   WHERE m.company_id=(SELECT company_id FROM _role_fixture) AND m.user_id=(SELECT viewer_id FROM _role_fixture)),
   'viewer'::text,'Accountant cannot change another member role');
