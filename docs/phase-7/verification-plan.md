@@ -54,9 +54,10 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 - [x] Test cross-company isolation and role-specific access with at least two authenticated users (PR #61; one authorized member and one authenticated non-member in the single-company installation model; member accounting access succeeds, outsider reads and writes are denied).
 - [x] Review grants, RLS policies, SECURITY DEFINER functions and exposed views (hosted read-only review on 2026-11-27: all public tables have RLS and policies; all public views use security_invoker; no public SECURITY DEFINER functions; private SECURITY DEFINER functions have empty search_path; no public tables granted directly to anon; no public functions executable by anon. Eight private trigger functions had API-role EXECUTE grants; migration `20261127214753_revoke_private_trigger_function_execute` was applied and verified on hosted DB on 2026-11-27: anon/authenticated execution is false for all private trigger functions).
 - [ ] Enable leaked-password protection in Supabase Auth settings (security advisor still reports disabled; enable in Supabase Dashboard → Authentication → Settings → Password Security).
-- [ ] Add deterministic automated database tests and authenticated browser integration tests.
+- [x] Add deterministic automated database tests (existing isolated migration, pgTAP and concurrency suites).
+- [ ] Authenticated browser integration tests — deferred by product decision on 2026-11-27; PR #64 was closed without merging and can be reopened when a dedicated test account and non-production target are available.
 - [ ] Keep CI green and document the exact checks run.
-- [ ] Define backup, recovery, monitoring and deployment procedures before production use.
+- [x] Document backup, recovery, monitoring and deployment procedures (runbook added; operational configuration and restore rehearsal remain open).
 
 **Phase 7.5 PR #61 evidence (2026-11-27):** Merge commit `8f3f29bb8d24799f16e55399c750d916bd8307a1`. CI, isolated database migration/pgTAP tests, all four concurrency checks and Vercel preview passed. Test fixtures roll back; no hosted database or production data changes were made.
 
@@ -66,10 +67,11 @@ This phase is a control and reliability gate, not a feature-count milestone. A v
 
 1. Frontend auth/workspace reliability and deterministic tests.
 2. Database-level tests for accounting invariants and permissions.
-3. Authenticated end-to-end tests for onboarding, commercial and project workflows.
-4. Fix findings in isolated migrations/PRs; do not bypass RLS or weaken accounting controls.
-5. Re-run CI, database advisors and authenticated regression tests.
-6. Only then plan the next feature phase.
+3. Fix findings in isolated migrations/PRs; do not bypass RLS or weaken accounting controls.
+4. Re-run CI, database advisors and automated database regression tests.
+5. Complete the backup, restore, monitoring and deployment readiness checklist in `backup-recovery-monitoring-deployment.md`.
+6. Authenticated browser tests remain deferred until a dedicated test account and non-production target are available.
+7. Only then plan the next feature phase.
 
 ## Current baseline (2026-11-02)
 
