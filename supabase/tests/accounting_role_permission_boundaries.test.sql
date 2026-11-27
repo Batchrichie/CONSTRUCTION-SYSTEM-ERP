@@ -2,7 +2,7 @@
 -- Exercises authenticated RLS and RPC behaviour in the disposable CI database.
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT extensions.plan(14);
+SELECT extensions.plan(15);
 CREATE TEMP TABLE _role_fixture (
   company_id uuid NOT NULL, owner_id uuid NOT NULL, accountant_id uuid NOT NULL,
   viewer_id uuid NOT NULL, cash_id uuid, bank_id uuid, journal_id uuid
@@ -53,6 +53,7 @@ SELECT extensions.is((SELECT status FROM public.journal_entries WHERE id=(SELECT
 
 SELECT set_config('request.jwt.claim.sub',(SELECT viewer_id::text FROM _role_fixture),true);
 SELECT extensions.ok(NOT private.has_company_permission((SELECT company_id FROM _role_fixture),'accounting.read'),'Viewer does not have accounting.read');
+SELECT extensions.ok(NOT private.has_company_permission((SELECT company_id FROM _role_fixture),'accounting.manage'),'Viewer does not have accounting.manage');
 SELECT extensions.is((SELECT count(*)::integer FROM public.chart_of_accounts WHERE company_id=(SELECT company_id FROM _role_fixture)),0,
   'Viewer cannot read the company chart of accounts');
 UPDATE public.chart_of_accounts SET is_active=false WHERE company_id=(SELECT company_id FROM _role_fixture) AND account_code='1110';
